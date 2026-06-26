@@ -1,0 +1,11 @@
+node_modules
+dist
+.env*
+*.tsbuildinfo
+.cache
+.DS_Store
+*.pem
+drizzle/
+
+# drizzle meta journal, keep the migrations
+!drizzle/*.sql
