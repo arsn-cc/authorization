@@ -3,6 +3,15 @@ import "@/styles/globals.css";
 import type { ReactNode } from "react";
 import { RouterProvider } from "waku-jotai/router";
 import { ThemeProvider } from "@/components/provider/theme-provider";
+import { getConfig as getDbConfig, dialectFor } from "@/lib/db/config";
+import { getConfig as getCacheConfig } from "@/lib/cache/config";
+import { getConfig as getStorageConfig } from "@/lib/storage/config";
+
+const db = getDbConfig();
+const cache = getCacheConfig();
+const storage = getStorageConfig();
+
+console.log(`[startup] db=${db.type} (${dialectFor(db.type)}) cache=${cache.type} storage=${storage.type}`);
 
 type RootLayoutProps = { children: ReactNode };
 
