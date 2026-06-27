@@ -1,9 +1,14 @@
-import { getConfig } from "./config";
-import type { FileStorage } from "./types";
+import {
+	S3Client,
+	PutObjectCommand,
+	GetObjectCommand,
+	DeleteObjectCommand,
+	ListObjectsV2Command,
+	HeadObjectCommand,
+} from "@aws-sdk/client-s3";
+import type { FileStorage, FileMetadata } from "./types";
 
 export type { FileStorage, FileMetadata } from "./types";
-export type { StorageType, StorageConfig } from "./config";
-export { getConfig } from "./config";
 
 let _storage: FileStorage | null = null;
 
@@ -12,107 +17,84 @@ export async function getStorage(): Promise<FileStorage> {
 		return _storage;
 	}
 
-	const config = getConfig();
+	const bucket = process.env.STORAGE_BUCKET || "uploads";
+	const region = process.env.STORAGE_REGION;
+	const endpoint = process.env.STORAGE_ENDPOINT;
+	const accessKeyId = process.env.STORAGE_ACCESS_KEY_ID;
+	const secretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY;
+	const publicUrlBase = process.env.STORAGE_PUBLIC_URL;
 
-	switch (config.type) {
-		case "fs": {
-			const { createFsStorage } = await import("./drivers/fs");
-			_storage = await createFsStorage(config.baseDir, config.publicUrlBase);
-			break;
-		}
-		case "s3": {
-			const { createS3Storage } = await import("./drivers/s3");
-			_storage = await createS3Storage({
-				bucket: config.bucket ?? "uploads",
-				...(config.region ? { region: config.region } : {}),
-				...(config.endpoint ? { endpoint: config.endpoint } : {}),
-				...(config.accessKeyId ? { accessKeyId: config.accessKeyId } : {}),
-				...(config.secretAccessKey ? { secretAccessKey: config.secretAccessKey } : {}),
-				...(config.publicUrlBase ? { publicUrlBase: config.publicUrlBase } : {}),
-			} as never);
-			break;
-		}
-		case "r2": {
-			const { createR2Storage } = await import("./drivers/r2");
-			const binding = (globalThis as Record<string, unknown>)[process.env.R2_BINDING ?? ""] ?? process.env.R2_BINDING;
-			_storage = createR2Storage(binding as never, config.publicUrlBase);
-			break;
-		}
-		case "cf-kv": {
-			const { createKvStorage } = await import("./drivers/kv");
-			const binding =
-				(globalThis as Record<string, unknown>)[process.env.CF_KV_BINDING ?? ""] ?? process.env.CF_KV_BINDING;
-			_storage = createKvStorage(binding as never, config.publicUrlBase);
-			break;
-		}
-		case "gcs": {
-			const { createGcsStorage } = await import("./drivers/gcs");
-			_storage = await createGcsStorage({
-				bucket: config.bucket ?? "uploads",
-				...(process.env.GOOGLE_APPLICATION_CREDENTIALS
-					? { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS }
-					: {}),
-				...(config.publicUrlBase ? { publicUrlBase: config.publicUrlBase } : {}),
-			} as never);
-			break;
-		}
-		case "azure": {
-			const { createAzureStorage } = await import("./drivers/azure");
-			_storage = await createAzureStorage({
-				connectionString: config.connectionString ?? "",
-				containerName: config.bucket ?? "uploads",
-				...(config.publicUrlBase ? { publicUrlBase: config.publicUrlBase } : {}),
-			} as never);
-			break;
-		}
-		case "supabase": {
-			const { createSupabaseStorage } = await import("./drivers/supabase");
-			_storage = await createSupabaseStorage({
-				url: config.endpoint ?? "",
-				anonKey: config.accessKeyId ?? "",
-				bucket: config.bucket ?? "uploads",
-				...(config.publicUrlBase ? { publicUrlBase: config.publicUrlBase } : {}),
-			} as never);
-			break;
-		}
-		case "webdav": {
-			const { createWebdavStorage } = await import("./drivers/webdav");
-			const wdCfg: Record<string, unknown> = {
-				url: config.endpoint ?? "",
-				...(config.username ? { username: config.username } : {}),
-				...(config.password ? { password: config.password } : {}),
-				...(config.publicUrlBase ? { publicUrlBase: config.publicUrlBase } : {}),
-			};
-			_storage = await createWebdavStorage(wdCfg as never);
-			break;
-		}
-		case "sql": {
-			const { createSqlStorage } = await import("./drivers/sql");
-			_storage = await createSqlStorage({
-				connectionString: config.connectionString ?? "",
-				...(config.tableName ? { tableName: config.tableName } : {}),
-				...(config.publicUrlBase ? { publicUrlBase: config.publicUrlBase } : {}),
-			} as never);
-			break;
-		}
-		case "http": {
-			const { createHttpStorage } = await import("./drivers/http");
-			_storage = await createHttpStorage({
-				baseUrl: config.endpoint ?? "",
-				...(config.publicUrlBase ? { publicUrlBase: config.publicUrlBase } : {}),
-			} as never);
-			break;
-		}
-		case "memory": {
-			const { createMemoryStorage } = await import("./drivers/memory");
-			_storage = createMemoryStorage();
-			break;
-		}
-		default: {
-			const _exhaustive: never = config.type;
-			throw new Error(`Unsupported storage type: ${String(_exhaustive)}`);
-		}
-	}
+	const client = new S3Client({
+		...(region ? { region } : {}),
+		...(endpoint ? { endpoint } : {}),
+		...(accessKeyId && secretAccessKey ? { credentials: { accessKeyId, secretAccessKey } } : {}),
+	});
+
+	_storage = {
+		async write(key: string, data: Uint8Array | Blob | string, options?: { contentType?: string }): Promise<void> {
+			await client.send(
+				new PutObjectCommand({
+					Bucket: bucket,
+					Key: key,
+					Body: data,
+					...(options?.contentType ? { ContentType: options.contentType } : {}),
+				}),
+			);
+		},
+
+		async read(key: string): Promise<Uint8Array | null> {
+			try {
+				const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+				if (!result.Body) {
+					return null;
+				}
+				return await result.Body.transformToByteArray();
+			} catch {
+				return null;
+			}
+		},
+
+		async delete(key: string): Promise<void> {
+			await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+		},
+
+		async list(prefix?: string): Promise<string[]> {
+			const result = await client.send(
+				new ListObjectsV2Command({
+					Bucket: bucket,
+					...(prefix ? { Prefix: prefix } : {}),
+				}),
+			);
+			return (result.Contents ?? []).map((c) => c.Key!).filter(Boolean);
+		},
+
+		async exists(key: string): Promise<boolean> {
+			try {
+				await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+				return true;
+			} catch {
+				return false;
+			}
+		},
+
+		async metadata(key: string): Promise<FileMetadata | null> {
+			try {
+				const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+				return { size: head.ContentLength ?? 0, contentType: head.ContentType };
+			} catch {
+				return null;
+			}
+		},
+
+		url(key: string): string | undefined {
+			return publicUrlBase ? `${publicUrlBase.replace(/\/$/, "")}/${key}` : undefined;
+		},
+
+		async clear(): Promise<void> {
+			const keys = await _storage!.list();
+			await Promise.all(keys.map((k) => _storage!.delete(k)));
+		},
+	};
 
 	return _storage;
 }

@@ -5,6 +5,7 @@ dist
 .cache
 .DS_Store
 *.pem
+files/
 drizzle/
 
 # drizzle meta journal, keep the migrations

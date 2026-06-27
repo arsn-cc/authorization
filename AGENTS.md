@@ -34,7 +34,7 @@ Always run `pnpm typecheck && pnpm lint && pnpm format:check` after making chang
 
 - **Linter:** `oxlint` + `oxlint-tsgolint` (type-aware). Key rules: `curly: error`, `eqeqeq: error`, `no-floating-promises: error`, `exhaustive-deps: warn`, `no-unused-vars: error` (prefix ignored with `_`)
 - **Formatter:** `oxfmt` — tabs, 120 width, trailing commas, Tailwind class sorting
-- **Ignored:** `dist/`, `.cache/`, `.vercel/`, `pages.gen.ts`, `node_modules/`, `**/drivers/_optional.d.ts`
+- **Ignored:** `dist/`, `.cache/`, `.vercel/`, `pages.gen.ts`, `node_modules/`
 - **`oxlintrc` exceptions:** `no-explicit-any` off, `no-empty-object-type` off, `no-unsafe-type-assertion` off
 
 ## Import Conventions
@@ -68,10 +68,10 @@ src/
 │   ├── footer.tsx
 │   └── header.tsx
 ├── lib/
-│   ├── cache/             # Pluggable cache (15 backends)
-│   ├── db/                # Pluggable DB (32 types, 7 dialects) + Drizzle
+│   ├── cache/             # Cache: Redis (ioredis)
+│   ├── db/                # DB: Postgres (Drizzle ORM)
 │   ├── state/             # Jotai atoms
-│   ├── storage/           # Pluggable file storage (11 backends)
+│   ├── storage/           # Storage: S3-compatible
 │   └── utils.ts
 ├── pages/                 # File-based routing
 │   ├── _layout.tsx        # Root layout (SSR)
@@ -84,48 +84,44 @@ src/
 
 ## Database (Drizzle ORM)
 
-- `drizzle-orm` + `drizzle-kit` v1.0.0-rc.3
-- Schema in `src/lib/db/schema.ts` — use `createSchema()` for dialect-aware tables
-- `getDb()` lazy singleton factory, dispatches by `DATABASE_TYPE` env var
-- Config: `src/lib/db/config.ts` — 32 types across 7 dialects
-- Drivers: `src/lib/db/drivers/` — per-dialect files, dynamically imported
+- `drizzle-orm` + `drizzle-kit` (Postgres only, `node-postgres` with `pg`)
+- Schema in `src/lib/db/schema.ts` — `pgTable` definitions
+- `getDb()` lazy singleton
 
-| Command            | Purpose                 |
-| ------------------ | ----------------------- |
-| `pnpm db:generate` | Generate SQL migrations |
-| `pnpm db:push`     | Push schema to database |
-| `pnpm db:migrate`  | Apply migrations        |
-| `pnpm db:studio`   | Open Drizzle Studio     |
-| `pnpm db:drop`     | Drop database objects   |
+| Command                 | Purpose                         |
+| ----------------------- | ------------------------------- |
+| `pnpm db:generate`      | Generate SQL migrations         |
+| `pnpm db:push`          | Push schema to database         |
+| `pnpm db:migrate`       | Apply migrations                |
+| `pnpm db:studio`        | Open Drizzle Studio             |
+| `pnpm db:drop`          | Drop database objects           |
+| `pnpm db:seed`          | Seed roles and permissions      |
+| `pnpm seed:create-user` | Interactive admin user creation |
 
 ## Cache (`src/lib/cache/`)
 
-Switched via `CACHE_TYPE` env var. Lazy singleton via `getCache()`.
+Redis via ioredis. Lazy singleton via `getCache()`.
 
 - **Interface:** `get`, `set`, `delete`, `clear`, `has`
-- **15 backends:** memory, lru, redis, upstash, vercel-kv, memcached, cf-kv, cf-cache, d1, sqlite, fs, pg, dynamodb, etcd, firebase
-- One file per driver in `drivers/`, dynamically imported
 
 ## Storage (`src/lib/storage/`)
 
-Switched via `STORAGE_TYPE` env var. Lazy singleton via `getStorage()`.
+S3-compatible storage via `@aws-sdk/client-s3`. Lazy singleton via `getStorage()`.
 
 - **Interface:** `write`, `read`, `delete`, `list`, `exists`, `clear`, `url`
-- **11 backends:** fs, s3, r2, cf-kv, gcs, azure, supabase, webdav, sql, http, memory
-- One file per driver in `drivers/`, dynamically imported
 
 ## Dev Environment
 
 - `.env` gitignored; copy `.env.example` for defaults
-- Current: `DATABASE_TYPE=sqlite` `STORAGE_TYPE=fs` `CACHE_TYPE=memory`
-- Startup log: `[startup] db=sqlite (sqlite) cache=memory storage=fs`
+- Requires Postgres, Redis, and S3-compatible storage (e.g. MinIO) running locally
+- Startup log: `[startup] db=postgres-js cache=redis storage=s3`
 
 ## Key Libraries
 
 - React 19, React DOM 19, react-server-dom-webpack 19
 - `waku` 1.0.0-beta.4, `waku-jotai`
 - `tailwindcss` 4.3.1, `jotai` 2.x, `zod` 4.x
-- `drizzle-orm` 0.45.x, `postgres` 3.x, `mysql2`, `@libsql/client`
+- `drizzle-orm` 1.x, `postgres` 3.x, `@aws-sdk/client-s3`, `ioredis`
 - `recharts` 3.8.0, `embla-carousel-react` 8.x, `sonner` 2.x, `vaul`, `cmdk`, `input-otp`, `react-day-picker` 10.x
 
 ## Waku Routing

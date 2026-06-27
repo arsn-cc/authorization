@@ -1,87 +1,74 @@
-export function createSchema<TTable extends (...args: any[]) => any>(builders: {
-	table: TTable;
-	id: (name: string) => { primaryKey(config?: any): any };
-	integer: (name: string) => { notNull(): any; references(fn: () => any): any; default(value: number): any };
-	text: (name: string) => { notNull(): any; unique(): any; default(value: string): any };
-	timestamp: (name: string) => { notNull(): any; defaultNow(): any };
-}): {
-	user: ReturnType<TTable>;
-	session: ReturnType<TTable>;
-	client: ReturnType<TTable>;
-	role: ReturnType<TTable>;
-	permission: ReturnType<TTable>;
-} {
-	const user = builders.table("user", {
-		id: builders.id("id").primaryKey(),
-		name: builders.text("name"),
-		email: builders.text("email").notNull().unique(),
-		emailVerified: builders.timestamp("email_verified"),
-		passwordHash: builders.text("password_hash"),
-		image: builders.text("image"),
-		roleId: builders.integer("role_id").references(() => role.id),
-		createdAt: builders.timestamp("created_at").notNull().defaultNow(),
-		updatedAt: builders.timestamp("updated_at").notNull().defaultNow(),
-	});
+import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 
-	const session = builders.table("session", {
-		id: builders.id("id").primaryKey(),
-		userId: builders
-			.integer("user_id")
-			.notNull()
-			.references(() => user.id),
-		token: builders.text("token").notNull().unique(),
-		expires: builders.timestamp("expires").notNull(),
-		usedAt: builders.timestamp("used_at"),
-		userAgent: builders.text("user_agent"),
-		ip: builders.text("ip"),
-		location: builders.text("location"),
-		city: builders.text("city"),
-		country: builders.text("country"),
-		region: builders.text("region"),
-		timezone: builders.text("timezone"),
-		language: builders.text("language"),
-		deviceType: builders.text("device_type"),
-		os: builders.text("os"),
-		browser: builders.text("browser"),
-		createdAt: builders.timestamp("created_at").notNull().defaultNow(),
-	});
+const permission = pgTable("permission", {
+	id: serial("id").primaryKey(),
+	name: text("name").notNull().unique(),
+	description: text("description"),
+});
 
-	const client = builders.table("client", {
-		id: builders.id("id").primaryKey(),
-		clientId: builders.text("client_id").notNull().unique(),
-		type: builders.text("type").notNull(),
-		clientSecret: builders.text("client_secret"),
-		name: builders.text("name").notNull(),
-		redirectUris: builders.text("redirect_uris"),
-		grants: builders.text("grants"),
-		scopes: builders.text("scopes").notNull().default("openid profile email"),
-		logo: builders.text("logo"),
-		website: builders.text("website"),
-		requireConsent: builders.integer("require_consent").notNull().default(1),
-		entityId: builders.text("entity_id"),
-		acsUrl: builders.text("acs_url"),
-		audience: builders.text("audience"),
-		samlCertificate: builders.text("saml_certificate"),
-		samlBinding: builders.text("saml_binding"),
-		nameIdFormat: builders.text("name_id_format"),
-		assertionSigned: builders.integer("assertion_signed"),
-		authnSigned: builders.integer("authn_signed"),
-		createdAt: builders.timestamp("created_at").notNull().defaultNow(),
-		updatedAt: builders.timestamp("updated_at").notNull().defaultNow(),
-	});
+const role = pgTable("role", {
+	id: serial("id").primaryKey(),
+	name: text("name").notNull().unique(),
+	description: text("description"),
+	permissions: text("permissions").notNull().default("[]"),
+});
 
-	const role = builders.table("role", {
-		id: builders.id("id").primaryKey(),
-		name: builders.text("name").notNull().unique(),
-		description: builders.text("description"),
-		permissions: builders.text("permissions").notNull().default("[]"),
-	});
+const user = pgTable("user", {
+	id: serial("id").primaryKey(),
+	name: text("name"),
+	email: text("email").notNull().unique(),
+	emailVerified: timestamp("email_verified"),
+	passwordHash: text("password_hash"),
+	image: text("image"),
+	roleId: integer("role_id").references(() => role.id),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
-	const permission = builders.table("permission", {
-		id: builders.id("id").primaryKey(),
-		name: builders.text("name").notNull().unique(),
-		description: builders.text("description"),
-	});
+const session = pgTable("session", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	token: text("token").notNull().unique(),
+	expires: timestamp("expires").notNull(),
+	usedAt: timestamp("used_at"),
+	userAgent: text("user_agent"),
+	ip: text("ip"),
+	location: text("location"),
+	city: text("city"),
+	country: text("country"),
+	region: text("region"),
+	timezone: text("timezone"),
+	language: text("language"),
+	deviceType: text("device_type"),
+	os: text("os"),
+	browser: text("browser"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
-	return { user, session, client, role, permission };
-}
+const client = pgTable("client", {
+	id: serial("id").primaryKey(),
+	clientId: text("client_id").notNull().unique(),
+	type: text("type").notNull(),
+	clientSecret: text("client_secret"),
+	name: text("name").notNull(),
+	redirectUris: text("redirect_uris"),
+	grants: text("grants"),
+	scopes: text("scopes").notNull().default("openid profile email"),
+	logo: text("logo"),
+	website: text("website"),
+	requireConsent: integer("require_consent").notNull().default(1),
+	entityId: text("entity_id"),
+	acsUrl: text("acs_url"),
+	audience: text("audience"),
+	samlCertificate: text("saml_certificate"),
+	samlBinding: text("saml_binding"),
+	nameIdFormat: text("name_id_format"),
+	assertionSigned: integer("assertion_signed"),
+	authnSigned: integer("authn_signed"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const schema = { user, session, client, role, permission };
