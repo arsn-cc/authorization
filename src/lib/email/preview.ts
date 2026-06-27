@@ -6,6 +6,7 @@ export const preview = {
 	newEmail: "jane.new@example.com",
 	verifyUrl: "#",
 	revertUrl: "#",
+	confirmUrl: "#",
 	unlockUrl: "#",
 	time: "Jun 27, 2026 at 14:32 UTC",
 	ip: "203.0.113.42",
