@@ -53,9 +53,6 @@ const session = pgTable("session", {
 	userAgent: text("user_agent"),
 	ip: text("ip"),
 	location: text("location"),
-	city: text("city"),
-	country: text("country"),
-	region: text("region"),
 	timezone: text("timezone"),
 	language: text("language"),
 	deviceType: text("device_type"),
@@ -63,6 +60,19 @@ const session = pgTable("session", {
 	browser: text("browser"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+/** Session fields shown in login notification emails. */
+export const sessionDisplayFields = [
+	{ key: "ip", label: "IP address" },
+	{ key: "location", label: "Location" },
+	{ key: "timezone", label: "Timezone" },
+	{ key: "language", label: "Language" },
+	{ key: "deviceType", label: "Device" },
+	{ key: "os", label: "OS" },
+	{ key: "browser", label: "Browser" },
+] as const;
+
+export type SessionDisplayKeys = (typeof sessionDisplayFields)[number]["key"];
 
 // ── Client ────────────────────────────────────────────────────────
 // Every registered app, service, identity source, or protocol

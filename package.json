@@ -1,6 +1,6 @@
 {
 	"name": "authorization",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -19,7 +19,8 @@
 		"db:studio": "drizzle-kit studio",
 		"db:drop": "drizzle-kit drop",
 		"db:seed": "tsx --env-file=.env src/lib/db/scripts/seed.ts",
-		"seed:create-user": "tsx --env-file=.env src/lib/db/scripts/create-user.ts"
+		"seed:create-user": "tsx --env-file=.env src/lib/db/scripts/create-user.ts",
+		"email:dev": "EMAIL_PREVIEW=true email dev -d src/lib/email/templates"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.800.0",
@@ -38,6 +39,7 @@
 		"react": "~19.2.6",
 		"react-day-picker": "^10.0.1",
 		"react-dom": "~19.2.6",
+		"react-email": "^6.6.5",
 		"react-resizable-panels": "^4.11.2",
 		"react-server-dom-webpack": "~19.2.6",
 		"recharts": "3.8.0",
@@ -51,6 +53,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@react-email/ui": "^6.6.5",
 		"@rolldown/plugin-babel": "^0.2.3",
 		"@tailwindcss/vite": "4.3.1",
 		"@types/node": "^26",
