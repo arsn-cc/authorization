@@ -1,6 +1,8 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from "node:crypto";
 
 export const SESSION_TTL_DAYS = 7;
+export const PASSWORD_RESET_TOKEN_TTL_MINUTES = 60;
+export const EMAIL_TWO_FACTOR_CODE_TTL_MINUTES = 10;
 
 export function sessionKey(token: string) {
 	return `session:${token}`;
@@ -25,9 +27,31 @@ export function generateToken(): string {
 	return randomBytes(32).toString("hex");
 }
 
+export function generateNumericCode(): string {
+	return randomInt(0, 1_000_000).toString().padStart(6, "0");
+}
+
+export function hashSecret(secret: string): string {
+	return createHash("sha256").update(secret).digest("hex");
+}
+
+export function verifySecret(secret: string, stored: string): boolean {
+	const hash = hashSecret(secret);
+	if (hash.length !== stored.length) {
+		return false;
+	}
+	return timingSafeEqual(Buffer.from(hash), Buffer.from(stored));
+}
+
 export function inDays(days: number) {
 	const d = new Date();
 	d.setDate(d.getDate() + days);
+	return d;
+}
+
+export function inMinutes(minutes: number) {
+	const d = new Date();
+	d.setMinutes(d.getMinutes() + minutes);
 	return d;
 }
 

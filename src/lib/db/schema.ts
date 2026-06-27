@@ -61,6 +61,34 @@ const session = pgTable("session", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── Password reset token ──────────────────────────────────────────
+// Short-lived email link token used to prove mailbox access before
+// changing the account password. Only the hash is stored.
+const passwordResetToken = pgTable("password_reset_token", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	tokenHash: text("token_hash").notNull().unique(),
+	expires: timestamp("expires").notNull(),
+	usedAt: timestamp("used_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── Email two-factor code ─────────────────────────────────────────
+// Short-lived sign-in verification code delivered over email. Only the
+// hash is stored.
+const emailTwoFactorCode = pgTable("email_two_factor_code", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	codeHash: text("code_hash").notNull(),
+	expires: timestamp("expires").notNull(),
+	usedAt: timestamp("used_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 /** Session fields shown in login notification emails. */
 export const sessionDisplayFields = [
 	{ key: "ip", label: "IP address" },
@@ -189,4 +217,4 @@ const client = pgTable("client", {
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const schema = { user, session, client, role, permission };
+export const schema = { user, session, passwordResetToken, emailTwoFactorCode, client, role, permission };

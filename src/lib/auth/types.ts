@@ -45,6 +45,24 @@ export interface LoginInput {
 	browser?: string;
 }
 
+export interface RequestPasswordResetInput {
+	email: string;
+}
+
+export interface ResetPasswordInput {
+	token: string;
+	password: string;
+}
+
+export interface RequestEmailTwoFactorInput {
+	email: string;
+}
+
+export interface VerifyEmailTwoFactorInput {
+	email: string;
+	code: string;
+}
+
 export interface UserResult {
 	id: number;
 	email: string;

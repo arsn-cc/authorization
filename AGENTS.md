@@ -30,6 +30,8 @@ pnpm — do NOT use npm or yarn.
 
 Always run `pnpm typecheck && pnpm lint && pnpm format:check` after making changes.
 
+After any completed file change, commit the change without waiting for a separate commit request.
+
 ## Linting & Formatting
 
 - **Linter:** `oxlint` + `oxlint-tsgolint` (type-aware). Key rules: `curly: error`, `eqeqeq: error`, `no-floating-promises: error`, `exhaustive-deps: warn`, `no-unused-vars: error` (prefix ignored with `_`)

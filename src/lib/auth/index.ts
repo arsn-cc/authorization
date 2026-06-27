@@ -1,25 +1,53 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import { AuthError, ExistingUserError, InvalidCredentialsError } from "./types";
-import type { RegisterInput, LoginInput, UserResult, LoginResult, AuthenticatedSession, AuthResult } from "./types";
+import type {
+	RegisterInput,
+	LoginInput,
+	RequestPasswordResetInput,
+	ResetPasswordInput,
+	RequestEmailTwoFactorInput,
+	VerifyEmailTwoFactorInput,
+	UserResult,
+	LoginResult,
+	AuthenticatedSession,
+	AuthResult,
+} from "./types";
 import {
+	EMAIL_TWO_FACTOR_CODE_TTL_MINUTES,
+	PASSWORD_RESET_TOKEN_TTL_MINUTES,
 	SESSION_TTL_DAYS,
+	generateNumericCode,
+	hashSecret,
+	verifySecret,
 	sessionKey,
 	hashPassword,
 	verifyPassword,
 	generateToken,
 	inDays,
+	inMinutes,
 	sessionTtlSeconds,
 } from "./utils";
 import { isPreview } from "@/lib/email/preview";
-import { renderWelcome, renderLoginNotification } from "@/lib/email";
+import { renderWelcome, renderLoginNotification, renderPasswordReset, renderTwoFactor } from "@/lib/email";
 import { sendEmail } from "@/lib/email/send";
 
-export type { RegisterInput, LoginInput, UserResult, LoginResult, AuthenticatedSession, AuthResult } from "./types";
+export type {
+	RegisterInput,
+	LoginInput,
+	RequestPasswordResetInput,
+	ResetPasswordInput,
+	RequestEmailTwoFactorInput,
+	VerifyEmailTwoFactorInput,
+	UserResult,
+	LoginResult,
+	AuthenticatedSession,
+	AuthResult,
+} from "./types";
 
 function ok<T>(data: T): AuthResult<T> {
 	return { success: true, data };
@@ -29,10 +57,63 @@ function err(e: AuthError, code: string): AuthResult<never> {
 	return { success: false, error: { code, message: e.message } };
 }
 
+function isValidEmail(email: string): boolean {
+	return Boolean(email && email.includes("@"));
+}
+
+function isValidCode(code: string): boolean {
+	return /^\d{6}$/.test(code);
+}
+
+function passwordResetUrl(token: string): string {
+	const base = process.env.PASSWORD_RESET_URL_BASE ?? "http://localhost:3000/reset-password";
+	const url = new URL(base);
+	url.searchParams.set("token", token);
+	return url.toString();
+}
+
+async function sendPasswordResetEmail(to: string, username: string | null, token: string) {
+	if (isPreview) {
+		return;
+	}
+
+	const html = await renderPasswordReset({
+		...(username ? { username } : {}),
+		resetUrl: passwordResetUrl(token),
+	});
+	const emailResult = await sendEmail({
+		to,
+		subject: "Reset your ARSN password",
+		html,
+	});
+	if (!emailResult.success) {
+		console.error("Failed to send password reset email:", emailResult.error);
+	}
+}
+
+async function sendTwoFactorEmail(to: string, username: string | null, code: string) {
+	if (isPreview) {
+		return;
+	}
+
+	const html = await renderTwoFactor({
+		...(username ? { username } : {}),
+		code,
+	});
+	const emailResult = await sendEmail({
+		to,
+		subject: "Your ARSN verification code",
+		html,
+	});
+	if (!emailResult.success) {
+		console.error("Failed to send two-factor email:", emailResult.error);
+	}
+}
+
 // ── Registration ───────────────────────────────────────────────────
 
 export async function registerUser(input: RegisterInput): Promise<AuthResult<UserResult>> {
-	if (!input.email || !input.email.includes("@")) {
+	if (!isValidEmail(input.email)) {
 		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
 	}
 	if (!input.password || input.password.length < 8) {
@@ -83,6 +164,134 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 	}
 
 	return result;
+}
+
+// ── Password reset ─────────────────────────────────────────────────
+
+export async function requestPasswordReset(input: RequestPasswordResetInput): Promise<AuthResult<true>> {
+	if (!isValidEmail(input.email)) {
+		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
+	if (!user || !user.passwordHash) {
+		return ok(true as const);
+	}
+
+	const token = generateToken();
+	await db.insert(schema.passwordResetToken).values({
+		userId: user.id,
+		tokenHash: hashSecret(token),
+		expires: inMinutes(PASSWORD_RESET_TOKEN_TTL_MINUTES),
+	});
+
+	await sendPasswordResetEmail(user.email, user.name, token);
+
+	return ok(true as const);
+}
+
+export async function resetPasswordWithToken(input: ResetPasswordInput): Promise<AuthResult<true>> {
+	if (!input.token) {
+		return err(new AuthError("Invalid or expired reset token"), "INVALID_TOKEN");
+	}
+	if (!input.password || input.password.length < 8) {
+		return err(new AuthError("Password must be at least 8 characters"), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const tokenHash = hashSecret(input.token);
+	const [resetToken] = await db
+		.select()
+		.from(schema.passwordResetToken)
+		.where(and(eq(schema.passwordResetToken.tokenHash, tokenHash), isNull(schema.passwordResetToken.usedAt)))
+		.limit(1);
+
+	if (!resetToken || resetToken.expires <= new Date()) {
+		return err(new AuthError("Invalid or expired reset token"), "INVALID_TOKEN");
+	}
+
+	const [user] = await db.select().from(schema.user).where(eq(schema.user.id, resetToken.userId));
+	if (!user || !user.passwordHash) {
+		return err(new AuthError("Invalid or expired reset token"), "INVALID_TOKEN");
+	}
+
+	const now = new Date();
+	const sessions = await db
+		.select({ token: schema.session.token })
+		.from(schema.session)
+		.where(eq(schema.session.userId, user.id));
+	const cache = await getCache();
+
+	await Promise.all([
+		db.update(schema.passwordResetToken).set({ usedAt: now }).where(eq(schema.passwordResetToken.id, resetToken.id)),
+		db
+			.update(schema.user)
+			.set({ passwordHash: hashPassword(input.password), updatedAt: now })
+			.where(eq(schema.user.id, user.id)),
+		db.delete(schema.session).where(eq(schema.session.userId, user.id)),
+		...sessions.map((session) => cache.delete(sessionKey(session.token))),
+	]);
+
+	return ok(true as const);
+}
+
+// ── Email two-factor codes ─────────────────────────────────────────
+
+export async function requestEmailTwoFactorCode(input: RequestEmailTwoFactorInput): Promise<AuthResult<true>> {
+	if (!isValidEmail(input.email)) {
+		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
+	if (!user || !user.emailVerified) {
+		return ok(true as const);
+	}
+
+	const code = generateNumericCode();
+	await db.insert(schema.emailTwoFactorCode).values({
+		userId: user.id,
+		codeHash: hashSecret(code),
+		expires: inMinutes(EMAIL_TWO_FACTOR_CODE_TTL_MINUTES),
+	});
+
+	await sendTwoFactorEmail(user.email, user.name, code);
+
+	return ok(true as const);
+}
+
+export async function verifyEmailTwoFactorCode(input: VerifyEmailTwoFactorInput): Promise<AuthResult<true>> {
+	if (!isValidEmail(input.email)) {
+		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
+	}
+	if (!isValidCode(input.code)) {
+		return err(new AuthError("Invalid or expired verification code"), "INVALID_CODE");
+	}
+
+	const db = await getDb();
+	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
+	if (!user || !user.emailVerified) {
+		return err(new AuthError("Invalid or expired verification code"), "INVALID_CODE");
+	}
+
+	const [twoFactorCode] = await db
+		.select()
+		.from(schema.emailTwoFactorCode)
+		.where(and(eq(schema.emailTwoFactorCode.userId, user.id), isNull(schema.emailTwoFactorCode.usedAt)))
+		.orderBy(desc(schema.emailTwoFactorCode.createdAt))
+		.limit(1);
+
+	if (!twoFactorCode || twoFactorCode.expires <= new Date() || !verifySecret(input.code, twoFactorCode.codeHash)) {
+		return err(new AuthError("Invalid or expired verification code"), "INVALID_CODE");
+	}
+
+	await db
+		.update(schema.emailTwoFactorCode)
+		.set({ usedAt: new Date() })
+		.where(eq(schema.emailTwoFactorCode.id, twoFactorCode.id));
+
+	return ok(true as const);
 }
 
 // ── Login ───────────────────────────────────────────────────────────

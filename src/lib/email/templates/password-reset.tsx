@@ -7,12 +7,12 @@ import { isPreview, preview } from "@/lib/email/preview";
 
 export interface PasswordResetEmailProps {
 	username?: string;
-	resetUrl: string;
+	resetUrl?: string;
 }
 
 export default function PasswordResetEmail({
 	username = isPreview ? preview.username : undefined,
-	resetUrl,
+	resetUrl = isPreview ? preview.resetUrl : undefined,
 }: PasswordResetEmailProps) {
 	return (
 		<Layout preview="Reset your password">
@@ -25,7 +25,7 @@ export default function PasswordResetEmail({
 				</Text>
 			</Section>
 			<Section className="mt-6 text-center">
-				<Button href={resetUrl}>Reset password</Button>
+				<Button href={resetUrl ?? "#"}>Reset password</Button>
 			</Section>
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">
