@@ -1,9 +1,9 @@
 export const isPreview = process.env.EMAIL_PREVIEW === "true";
 
 export const preview = {
-	username: "jane",
-	email: "jane@example.com",
-	newEmail: "jane.new@example.com",
+	username: "test",
+	email: "test@example.com",
+	newEmail: "test.new@example.com",
 	verifyUrl: "#",
 	revertUrl: "#",
 	confirmUrl: "#",

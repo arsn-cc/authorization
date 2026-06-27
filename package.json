@@ -7,6 +7,7 @@
 		"dev": "waku dev",
 		"build": "waku build",
 		"start": "waku start",
+		"hooks:install": "git config core.hooksPath .githooks",
 		"typegen": "waku router typegen",
 		"lint": "oxlint",
 		"lint:fix": "oxlint --fix",

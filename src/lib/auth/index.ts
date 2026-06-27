@@ -15,6 +15,9 @@ import {
 	inDays,
 	sessionTtlSeconds,
 } from "./utils";
+import { isPreview } from "@/lib/email/preview";
+import { renderWelcome, renderLoginNotification } from "@/lib/email";
+import { sendEmail } from "@/lib/email/send";
 
 export type { RegisterInput, LoginInput, UserResult, LoginResult, AuthenticatedSession, AuthResult } from "./types";
 
@@ -56,7 +59,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 		return err(new AuthError("Failed to create user"), "INTERNAL_ERROR");
 	}
 
-	return ok({
+	const result = ok({
 		id: inserted.id,
 		email: inserted.email,
 		name: inserted.name,
@@ -66,6 +69,20 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 		createdAt: inserted.createdAt,
 		updatedAt: inserted.updatedAt,
 	});
+
+	if (!isPreview) {
+		const html = await renderWelcome(inserted.name ? { username: inserted.name } : {});
+		const emailResult = await sendEmail({
+			to: inserted.email,
+			subject: "Welcome to ARSN - Your account has been created",
+			html,
+		});
+		if (!emailResult.success) {
+			console.error("Failed to send welcome email:", emailResult.error);
+		}
+	}
+
+	return result;
 }
 
 // ── Login ───────────────────────────────────────────────────────────
@@ -89,6 +106,32 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 	const token = generateToken();
 	const now = new Date();
 	const expires = inDays(SESSION_TTL_DAYS);
+
+	if (user.emailVerified) {
+		if (!isPreview) {
+			const time = now.toISOString();
+			const html = await renderLoginNotification({
+				...(user.name ? { username: user.name } : {}),
+				email: user.email,
+				time,
+				...(input.ip ? { ip: input.ip } : {}),
+				...(input.location ? { location: input.location } : {}),
+				...(input.timezone ? { timezone: input.timezone } : {}),
+				...(input.language ? { language: input.language } : {}),
+				...(input.deviceType ? { deviceType: input.deviceType } : {}),
+				...(input.os ? { os: input.os } : {}),
+				...(input.browser ? { browser: input.browser } : {}),
+			});
+			const emailResult = await sendEmail({
+				to: user.email,
+				subject: `Login Notification - ${time}`,
+				html,
+			});
+			if (!emailResult.success) {
+				console.error("Failed to send login notification email:", emailResult.error);
+			}
+		}
+	}
 
 	const [inserted] = await db
 		.insert(schema.session)

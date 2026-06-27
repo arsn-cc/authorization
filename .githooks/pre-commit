@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+pnpm typecheck
+pnpm lint
+pnpm format:check
