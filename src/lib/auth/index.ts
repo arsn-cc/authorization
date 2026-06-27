@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
@@ -18,12 +18,10 @@ import type {
 	AuthResult,
 } from "./types";
 import {
-	EMAIL_TWO_FACTOR_CODE_TTL_MINUTES,
+	EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES,
 	PASSWORD_RESET_TOKEN_TTL_MINUTES,
 	SESSION_TTL_DAYS,
-	generateNumericCode,
 	hashSecret,
-	verifySecret,
 	sessionKey,
 	hashPassword,
 	verifyPassword,
@@ -61,12 +59,15 @@ function isValidEmail(email: string): boolean {
 	return Boolean(email && email.includes("@"));
 }
 
-function isValidCode(code: string): boolean {
-	return /^\d{6}$/.test(code);
-}
-
 function passwordResetUrl(token: string): string {
 	const base = process.env.PASSWORD_RESET_URL_BASE ?? "http://localhost:3000/reset-password";
+	const url = new URL(base);
+	url.searchParams.set("token", token);
+	return url.toString();
+}
+
+function twoFactorUrl(token: string): string {
+	const base = process.env.EMAIL_TWO_FACTOR_URL_BASE ?? "http://localhost:3000/verify-sign-in";
 	const url = new URL(base);
 	url.searchParams.set("token", token);
 	return url.toString();
@@ -91,18 +92,18 @@ async function sendPasswordResetEmail(to: string, username: string | null, token
 	}
 }
 
-async function sendTwoFactorEmail(to: string, username: string | null, code: string) {
+async function sendTwoFactorEmail(to: string, username: string | null, token: string) {
 	if (isPreview) {
 		return;
 	}
 
 	const html = await renderTwoFactor({
 		...(username ? { username } : {}),
-		code,
+		verifyUrl: twoFactorUrl(token),
 	});
 	const emailResult = await sendEmail({
 		to,
-		subject: "Your ARSN verification code",
+		subject: "Verify your ARSN sign-in",
 		html,
 	});
 	if (!emailResult.success) {
@@ -236,9 +237,9 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 	return ok(true as const);
 }
 
-// ── Email two-factor codes ─────────────────────────────────────────
+// ── Email two-factor links ─────────────────────────────────────────
 
-export async function requestEmailTwoFactorCode(input: RequestEmailTwoFactorInput): Promise<AuthResult<true>> {
+export async function requestEmailTwoFactorLink(input: RequestEmailTwoFactorInput): Promise<AuthResult<true>> {
 	if (!isValidEmail(input.email)) {
 		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
 	}
@@ -249,47 +250,44 @@ export async function requestEmailTwoFactorCode(input: RequestEmailTwoFactorInpu
 		return ok(true as const);
 	}
 
-	const code = generateNumericCode();
-	await db.insert(schema.emailTwoFactorCode).values({
+	const token = generateToken();
+	await db.insert(schema.emailTwoFactorToken).values({
 		userId: user.id,
-		codeHash: hashSecret(code),
-		expires: inMinutes(EMAIL_TWO_FACTOR_CODE_TTL_MINUTES),
+		tokenHash: hashSecret(token),
+		expires: inMinutes(EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES),
 	});
 
-	await sendTwoFactorEmail(user.email, user.name, code);
+	await sendTwoFactorEmail(user.email, user.name, token);
 
 	return ok(true as const);
 }
 
-export async function verifyEmailTwoFactorCode(input: VerifyEmailTwoFactorInput): Promise<AuthResult<true>> {
-	if (!isValidEmail(input.email)) {
-		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
-	}
-	if (!isValidCode(input.code)) {
-		return err(new AuthError("Invalid or expired verification code"), "INVALID_CODE");
+export async function verifyEmailTwoFactorToken(input: VerifyEmailTwoFactorInput): Promise<AuthResult<true>> {
+	if (!input.token) {
+		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
 	}
 
 	const db = await getDb();
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
-	if (!user || !user.emailVerified) {
-		return err(new AuthError("Invalid or expired verification code"), "INVALID_CODE");
-	}
-
-	const [twoFactorCode] = await db
+	const tokenHash = hashSecret(input.token);
+	const [twoFactorToken] = await db
 		.select()
-		.from(schema.emailTwoFactorCode)
-		.where(and(eq(schema.emailTwoFactorCode.userId, user.id), isNull(schema.emailTwoFactorCode.usedAt)))
-		.orderBy(desc(schema.emailTwoFactorCode.createdAt))
+		.from(schema.emailTwoFactorToken)
+		.where(and(eq(schema.emailTwoFactorToken.tokenHash, tokenHash), isNull(schema.emailTwoFactorToken.usedAt)))
 		.limit(1);
 
-	if (!twoFactorCode || twoFactorCode.expires <= new Date() || !verifySecret(input.code, twoFactorCode.codeHash)) {
-		return err(new AuthError("Invalid or expired verification code"), "INVALID_CODE");
+	if (!twoFactorToken || twoFactorToken.expires <= new Date()) {
+		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
+	}
+
+	const [user] = await db.select().from(schema.user).where(eq(schema.user.id, twoFactorToken.userId));
+	if (!user || !user.emailVerified) {
+		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
 	}
 
 	await db
-		.update(schema.emailTwoFactorCode)
+		.update(schema.emailTwoFactorToken)
 		.set({ usedAt: new Date() })
-		.where(eq(schema.emailTwoFactorCode.id, twoFactorCode.id));
+		.where(eq(schema.emailTwoFactorToken.id, twoFactorToken.id));
 
 	return ok(true as const);
 }

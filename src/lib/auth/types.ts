@@ -59,8 +59,7 @@ export interface RequestEmailTwoFactorInput {
 }
 
 export interface VerifyEmailTwoFactorInput {
-	email: string;
-	code: string;
+	token: string;
 }
 
 export interface UserResult {

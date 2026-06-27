@@ -75,15 +75,15 @@ const passwordResetToken = pgTable("password_reset_token", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// ── Email two-factor code ─────────────────────────────────────────
-// Short-lived sign-in verification code delivered over email. Only the
-// hash is stored.
-const emailTwoFactorCode = pgTable("email_two_factor_code", {
+// ── Email two-factor token ────────────────────────────────────────
+// Short-lived sign-in verification link delivered over email. Only the
+// token hash is stored.
+const emailTwoFactorToken = pgTable("email_two_factor_token", {
 	id: serial("id").primaryKey(),
 	userId: integer("user_id")
 		.notNull()
 		.references(() => user.id),
-	codeHash: text("code_hash").notNull(),
+	tokenHash: text("token_hash").notNull().unique(),
 	expires: timestamp("expires").notNull(),
 	usedAt: timestamp("used_at"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -217,4 +217,4 @@ const client = pgTable("client", {
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const schema = { user, session, passwordResetToken, emailTwoFactorCode, client, role, permission };
+export const schema = { user, session, passwordResetToken, emailTwoFactorToken, client, role, permission };

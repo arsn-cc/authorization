@@ -6,6 +6,7 @@ export const preview = {
 	newEmail: "test.new@example.com",
 	verifyUrl: "#",
 	resetUrl: "#",
+	twoFactorUrl: "#",
 	revertUrl: "#",
 	confirmUrl: "#",
 	unlockUrl: "#",
