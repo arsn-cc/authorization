@@ -1,10 +1,11 @@
-import { mysqlTable, serial, text, timestamp } from "drizzle-orm/mysql-core";
+import { mysqlTable, serial, int, text, timestamp } from "drizzle-orm/mysql-core";
 import { createSchema } from "../schema";
 import type { DatabaseType } from "../config";
 
 export const schema = createSchema({
 	table: mysqlTable,
 	id: serial,
+	integer: int,
 	text,
 	timestamp,
 });

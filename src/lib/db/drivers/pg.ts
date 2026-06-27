@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { cockroachTable } from "drizzle-orm/cockroach-core";
 import { text as cockroachText, timestamp as cockroachTimestamp } from "drizzle-orm/cockroach-core";
 import { int4 as cockroachInt } from "drizzle-orm/cockroach-core";
@@ -8,14 +8,17 @@ import type { DatabaseType } from "../config";
 export const schema = createSchema({
 	table: pgTable,
 	id: serial,
+	integer,
 	text,
 	timestamp,
 });
 
 const cockroachId = (name: string) => cockroachInt(name).generatedAlwaysAsIdentity();
+const cockroachIntCol = (name: string) => cockroachInt(name);
 export const cockroachSchema = createSchema({
 	table: cockroachTable,
 	id: cockroachId,
+	integer: cockroachIntCol,
 	text: cockroachText,
 	timestamp: cockroachTimestamp,
 });

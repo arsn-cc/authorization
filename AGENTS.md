@@ -90,13 +90,13 @@ src/
 - Config: `src/lib/db/config.ts` — 32 types across 7 dialects
 - Drivers: `src/lib/db/drivers/` — per-dialect files, dynamically imported
 
-| Command            | Purpose                      |
-| ------------------ | ---------------------------- |
-| `pnpm db:generate` | Generate SQL migrations      |
-| `pnpm db:push`     | Push schema to database      |
-| `pnpm db:migrate`  | Apply migrations             |
-| `pnpm db:studio`   | Open Drizzle Studio          |
-| `pnpm db:drop`     | Drop database objects        |
+| Command            | Purpose                 |
+| ------------------ | ----------------------- |
+| `pnpm db:generate` | Generate SQL migrations |
+| `pnpm db:push`     | Push schema to database |
+| `pnpm db:migrate`  | Apply migrations        |
+| `pnpm db:studio`   | Open Drizzle Studio     |
+| `pnpm db:drop`     | Drop database objects   |
 
 ## Cache (`src/lib/cache/`)
 
@@ -135,7 +135,7 @@ File-based in `src/pages/`. Routes are `pages/<route>/index.tsx`. Pages export a
 ### Rendering Modes
 
 ```ts
-export const getConfig = async () => ({ render: "static" }) as const;  // or "dynamic"
+export const getConfig = async () => ({ render: "static" }) as const; // or "dynamic"
 ```
 
 Pages default `static`, API handlers default `dynamic`.
@@ -144,12 +144,12 @@ Pages default `static`, API handlers default `dynamic`.
 
 Use `PageProps<'/path/pattern'>` from `waku/router`:
 
-| File | Route | Key Prop |
-|------|-------|----------|
-| `index.tsx` | `/` | `path`, `query` |
-| `blog/[slug]/index.tsx` | `/blog/:slug` | `slug` |
+| File                          | Route              | Key Prop              |
+| ----------------------------- | ------------------ | --------------------- |
+| `index.tsx`                   | `/`                | `path`, `query`       |
+| `blog/[slug]/index.tsx`       | `/blog/:slug`      | `slug`                |
 | `shop/[cat]/[prod]/index.tsx` | `/shop/:cat/:prod` | `category`, `product` |
-| `app/[...catchAll]/index.tsx` | `/app/*` | `catchAll: string[]` |
+| `app/[...catchAll]/index.tsx` | `/app/*`           | `catchAll: string[]`  |
 
 ### Layouts & Groups
 
@@ -164,7 +164,7 @@ In `_api/` dir; HTTP method exports, `_api` prefix stripped from URL:
 ```ts
 export const POST = (req: Request) => Response.json({ ok: true });
 export async function GET(_req: Request, { params }: ApiContext<"/users/[id]">) {
-  return Response.json({ id: params.id });
+	return Response.json({ id: params.id });
 }
 ```
 

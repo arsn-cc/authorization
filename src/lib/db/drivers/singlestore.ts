@@ -1,10 +1,11 @@
-import { singlestoreTable, serial, text, timestamp } from "drizzle-orm/singlestore-core";
+import { singlestoreTable, serial, int, text, timestamp } from "drizzle-orm/singlestore-core";
 import { createSchema } from "../schema";
 import type { DatabaseType } from "../config";
 
 export const schema = createSchema({
 	table: singlestoreTable,
 	id: serial,
+	integer: (name: string) => int(name) as any,
 	text,
 	timestamp,
 });

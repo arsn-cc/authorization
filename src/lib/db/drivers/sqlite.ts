@@ -14,6 +14,7 @@ const tsBuilder = (name: string) => {
 export const schema = createSchema({
 	table: sqliteTable,
 	id: (name: string) => integer(name),
+	integer: (name: string) => integer(name),
 	text: (name: string) => text(name),
 	timestamp: tsBuilder,
 });
