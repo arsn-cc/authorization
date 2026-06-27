@@ -9,7 +9,14 @@
 		"correctness": "error",
 		"suspicious": "warn"
 	},
-	"ignorePatterns": ["**/dist/", "**/.cache/", "**/.vercel/", "**/pages.gen.ts", "**/node_modules/"],
+	"ignorePatterns": [
+		"**/dist/",
+		"**/.cache/",
+		"**/.vercel/",
+		"**/pages.gen.ts",
+		"**/node_modules/",
+		"**/drivers/_optional.d.ts"
+	],
 	"rules": {
 		"react/jsx-key": "warn",
 		"typescript/no-explicit-any": "off",
