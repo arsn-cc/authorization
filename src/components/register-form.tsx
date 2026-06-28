@@ -25,8 +25,7 @@ export function RegisterForm() {
 		<div className="mx-auto w-full max-w-md px-4 py-8">
 			<title>Create an ARSN account</title>
 
-			<h1 className="text-3xl font-semibold tracking-tight">Create your account</h1>
-			<p className="text-muted-foreground mt-2">Enter your details to get started</p>
+			<h1 className="text-center text-3xl font-semibold tracking-tight">Register</h1>
 
 			<form action={formAction} className="mt-6 space-y-4">
 				<Field>

@@ -24,8 +24,7 @@ export function LoginForm() {
 		<div className="mx-auto w-full max-w-md px-4 py-8">
 			<title>Log in to ARSN</title>
 
-			<h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
-			<p className="text-muted-foreground mt-2">Log in to your account</p>
+			<h1 className="text-center text-3xl font-semibold tracking-tight">Login</h1>
 
 			<form action={formAction} className="mt-6 space-y-4">
 				<Field>

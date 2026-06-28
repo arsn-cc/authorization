@@ -114,6 +114,9 @@ async function sendTwoFactorEmail(to: string, username: string | null, token: st
 // ── Registration ───────────────────────────────────────────────────
 
 export async function registerUser(input: RegisterInput): Promise<AuthResult<UserResult>> {
+	if (process.env.DISABLE_REGISTRATION === "true") {
+		return err(new AuthError("Registration is disabled"), "REGISTRATION_DISABLED");
+	}
 	if (!isValidEmail(input.email)) {
 		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
 	}
