@@ -59,10 +59,7 @@ export default function LoginNotificationEmail({
 				</Text>
 			</Section>
 
-			<Section
-				className="bg-card mt-3 overflow-hidden rounded-md"
-				style={{ borderLeft: `4px solid ${process.env.PRIMARY_COLOR || "#22c55e"}`, padding: "12px" }}
-			>
+			<Section className="bg-card border-l-primary mt-3 overflow-hidden rounded-md border-l-4 p-3">
 				<table
 					style={{
 						width: "100%",
