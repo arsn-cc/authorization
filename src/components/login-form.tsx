@@ -17,7 +17,7 @@ async function loginAction(
 	return loginUser({ email, password });
 }
 
-export function LoginForm() {
+export function LoginForm({ registrationDisabled }: { registrationDisabled?: boolean }) {
 	const [state, formAction, isPending] = useActionState(loginAction, null);
 
 	return (
@@ -46,12 +46,14 @@ export function LoginForm() {
 				</Button>
 			</form>
 
-			<p className="text-muted-foreground mt-8 text-center text-sm">
-				Don't have an account?{" "}
-				<Link to="/register" className="text-foreground font-medium underline underline-offset-4">
-					Sign up
-				</Link>
-			</p>
+			{!registrationDisabled && (
+				<p className="text-muted-foreground mt-8 text-center text-sm">
+					Don't have an account?{" "}
+					<Link to="/register" className="text-foreground font-medium underline underline-offset-4">
+						Sign up
+					</Link>
+				</p>
+			)}
 		</div>
 	);
 }
