@@ -1,9 +1,6 @@
-import { unstable_notFound } from "waku/router/server";
 import { Link } from "waku";
 
 export default function NotFoundPage() {
-	unstable_notFound();
-
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
 			<title>404 - Not Found</title>

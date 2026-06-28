@@ -4,7 +4,7 @@
 import type { PathsForPages, GetConfigResponse } from 'waku/router';
 
 // prettier-ignore
-import type { getConfig as File_CatchAllIndex_getConfig } from './pages/[...catchAll]/index';
+import type { getConfig as File_404Index_getConfig } from './pages/404/index';
 // prettier-ignore
 import type { getConfig as File_AboutIndex_getConfig } from './pages/about/index';
 // prettier-ignore
@@ -16,7 +16,7 @@ import type { getConfig as File_RegisterIndex_getConfig } from './pages/register
 
 // prettier-ignore
 type Page =
-| ({ path: '/[...catchAll]' } & GetConfigResponse<typeof File_CatchAllIndex_getConfig>)
+| ({ path: '/404' } & GetConfigResponse<typeof File_404Index_getConfig>)
 | ({ path: '/about' } & GetConfigResponse<typeof File_AboutIndex_getConfig>)
 | ({ path: '/' } & GetConfigResponse<typeof File_Index_getConfig>)
 | ({ path: '/login' } & GetConfigResponse<typeof File_LoginIndex_getConfig>)
