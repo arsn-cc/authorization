@@ -1,9 +1,9 @@
-import { unstable_notFound } from "waku/router/server";
 import { RegisterForm } from "@/components/register-form";
+import { NotFoundContent } from "@/components/not-found-content";
 
 export default function RegisterPage() {
 	if (process.env.DISABLE_REGISTRATION === "true") {
-		unstable_notFound();
+		return <NotFoundContent />;
 	}
 
 	return <RegisterForm />;
