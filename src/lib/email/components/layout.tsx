@@ -6,7 +6,11 @@ interface LayoutProps {
 	children: ReactNode;
 }
 
+const DEFAULT_PRIMARY = "#22c55e";
+
 export function Layout({ preview, children }: LayoutProps) {
+	const primaryColor = process.env.PRIMARY_COLOR || DEFAULT_PRIMARY;
+
 	return (
 		<Html>
 			<Head />
@@ -19,7 +23,7 @@ export function Layout({ preview, children }: LayoutProps) {
 								bg: "#18181b",
 								card: "#27272a",
 								foreground: "#fafafa",
-								primary: "#22c55e",
+								primary: primaryColor,
 								muted: "#a1a1aa",
 								border: "#3f3f46",
 							},

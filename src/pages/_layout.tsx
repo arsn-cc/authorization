@@ -26,9 +26,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 			{primaryColor && (
 				<style>{`
 					:root, .dark {
-						--primary: oklch(${primaryColor});
-						--chart-4: oklch(${primaryColor});
-						--sidebar-primary: oklch(${primaryColor});
+						--primary: ${primaryColor};
+						--chart-4: ${primaryColor};
+						--sidebar-primary: ${primaryColor};
 					}
 				`}</style>
 			)}
