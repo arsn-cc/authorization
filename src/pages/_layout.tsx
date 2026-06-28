@@ -23,6 +23,13 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 				href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,700;1,400;1,700&display=swap"
 				precedence="font"
 			/>
+			<script
+				dangerouslySetInnerHTML={{
+					__html: `
+						(function(){try{var e=localStorage.getItem("vite-ui-theme");if(e==="dark"||(!e&&window.matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})();
+					`,
+				}}
+			/>
 			{primaryColor && (
 				<style>{`
 					:root, .dark {
