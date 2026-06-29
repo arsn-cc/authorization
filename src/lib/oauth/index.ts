@@ -3,6 +3,17 @@ import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { SignJWT, importPKCS8, importSPKI, exportJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import {
+	getClientById as getCachedClient,
+	getUserById as getCachedUser,
+	cacheOAuthAccessToken,
+	getCachedOAuthAccessToken,
+	cacheOAuthRefreshToken,
+	getCachedOAuthRefreshToken,
+	deleteCachedOAuthRefreshToken,
+	cacheOAuthAuthCode,
+	deleteCachedOAuthAuthCode,
+} from "@/lib/auth/cache";
 import type {
 	AuthorizationRequest,
 	TokenRequest,
@@ -108,41 +119,12 @@ async function getKeyPair() {
 }
 
 export async function getClientById(clientId: string): Promise<OAuthClient | null> {
-	const db = await getDb();
-	const [client] = await db
-		.select()
-		.from(schema.client)
-		.where(and(eq(schema.client.clientId, clientId)));
-	if (!client) {
+	const cached = await getCachedClient(clientId);
+	if (!cached) {
 		return null;
 	}
-	return {
-		id: client.id,
-		clientId: client.clientId,
-		clientSecret: client.clientSecret,
-		type: client.type,
-		name: client.name,
-		redirectUris: client.redirectUris,
-		grants: client.grants,
-		scopes: client.scopes,
-		requireConsent: Boolean(client.requireConsent),
-		pkceRequired: client.pkceRequired === 1 || client.pkceRequired === null ? null : client.pkceRequired === 1,
-		pkceChallengeMethod: client.pkceChallengeMethod,
-		accessTokenTtl: client.accessTokenTtl,
-		refreshTokenTtl: client.refreshTokenTtl,
-		idTokenTtl: client.idTokenTtl,
-		refreshTokenRotationEnabled:
-			client.refreshTokenRotationEnabled === 1 ? true : client.refreshTokenRotationEnabled === 0 ? false : null,
-		reuseRefreshTokens: client.reuseRefreshTokens === 1 ? true : client.reuseRefreshTokens === 0 ? false : null,
-		tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
-		dpopBound: client.dpopBound === 1 ? true : client.dpopBound === 0 ? false : null,
-		mtlsBound: client.mtlsBound === 1 ? true : client.mtlsBound === 0 ? false : null,
-		mtlsCertificateFingerprint: client.mtlsCertificateFingerprint,
-		idTokenSignedResponseAlg: client.idTokenSignedResponseAlg,
-		userinfoSignedResponseAlg: client.userinfoSignedResponseAlg,
-		subjectType: client.subjectType,
-		sectorIdentifierUri: client.sectorIdentifierUri,
-	};
+	// Convert from CachedOAuthClient to OAuthClient (same shape)
+	return cached as OAuthClient;
 }
 
 export async function authenticateClient(clientId: string, clientSecret?: string): Promise<OAuthClient | null> {
@@ -211,19 +193,26 @@ export async function generateAuthorizationCode(
 	const ttl = getAuthorizationCodeTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
-	await db.insert(schema.oauthAuthorizationCode).values({
-		code,
-		clientId: request.clientId,
-		userId,
-		sessionId: sessionId ?? null,
-		redirectUri: request.redirectUri,
-		scope: request.scope,
-		codeChallenge: request.codeChallenge ?? null,
-		codeChallengeMethod: request.codeChallengeMethod ?? null,
-		nonce: request.nonce ?? null,
-		authTime: new Date(),
-		expiresAt,
-	});
+	const [inserted] = await db
+		.insert(schema.oauthAuthorizationCode)
+		.values({
+			code,
+			clientId: request.clientId,
+			userId,
+			sessionId: sessionId ?? null,
+			redirectUri: request.redirectUri,
+			scope: request.scope,
+			codeChallenge: request.codeChallenge ?? null,
+			codeChallengeMethod: request.codeChallengeMethod ?? null,
+			nonce: request.nonce ?? null,
+			authTime: new Date(),
+			expiresAt,
+		})
+		.returning();
+
+	if (inserted) {
+		await cacheOAuthAuthCode(inserted);
+	}
 
 	return code;
 }
@@ -270,6 +259,8 @@ export async function validateAuthorizationCode(
 		.update(schema.oauthAuthorizationCode)
 		.set({ usedAt: new Date() })
 		.where(eq(schema.oauthAuthorizationCode.id, row.id));
+
+	await deleteCachedOAuthAuthCode(code);
 
 	const result: { userId: number; scope: string; nonce?: string; sessionId?: number } = {
 		userId: row.userId,
@@ -324,14 +315,21 @@ export async function generateAccessToken(
 	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
-	await db.insert(schema.oauthAccessToken).values({
-		token,
-		clientId: client.clientId,
-		userId: userId ?? null,
-		sessionId: sessionId ?? null,
-		scope: scope ?? client.scopes,
-		expiresAt,
-	});
+	const [inserted] = await db
+		.insert(schema.oauthAccessToken)
+		.values({
+			token,
+			clientId: client.clientId,
+			userId: userId ?? null,
+			sessionId: sessionId ?? null,
+			scope: scope ?? client.scopes,
+			expiresAt,
+		})
+		.returning();
+
+	if (inserted) {
+		await cacheOAuthAccessToken(inserted);
+	}
 
 	return token;
 }
@@ -347,14 +345,21 @@ export async function generateRefreshToken(
 	const ttl = getRefreshTokenTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
-	await db.insert(schema.oauthRefreshToken).values({
-		token,
-		clientId,
-		userId,
-		sessionId: sessionId ?? null,
-		scope,
-		expiresAt,
-	});
+	const [inserted] = await db
+		.insert(schema.oauthRefreshToken)
+		.values({
+			token,
+			clientId,
+			userId,
+			sessionId: sessionId ?? null,
+			scope,
+			expiresAt,
+		})
+		.returning();
+
+	if (inserted) {
+		await cacheOAuthRefreshToken(inserted);
+	}
 
 	return token;
 }
@@ -413,7 +418,7 @@ export async function generateIdToken(
 
 	if (scope) {
 		const scopes = scope.split(" ");
-		const user = await getUserById(userId);
+		const user = await getCachedUser(userId);
 		if (user) {
 			if (scopes.includes("profile")) {
 				if (user.name) {
@@ -572,17 +577,7 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 
 	const { client } = await validateTokenRequest(request);
 
-	const db = await getDb();
-	const [row] = await db
-		.select()
-		.from(schema.oauthRefreshToken)
-		.where(
-			and(
-				eq(schema.oauthRefreshToken.token, request.refreshToken),
-				eq(schema.oauthRefreshToken.clientId, request.clientId),
-				isNull(schema.oauthRefreshToken.usedAt),
-			),
-		);
+	const row = await getCachedOAuthRefreshToken(request.refreshToken, request.clientId);
 
 	if (!row) {
 		throw new Error("invalid_grant");
@@ -592,7 +587,9 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 		throw new Error("invalid_grant");
 	}
 
+	const db = await getDb();
 	await db.update(schema.oauthRefreshToken).set({ usedAt: new Date() }).where(eq(schema.oauthRefreshToken.id, row.id));
+	await deleteCachedOAuthRefreshToken(request.refreshToken);
 
 	const rotationEnabled = client.refreshTokenRotationEnabled ?? true;
 	const reuseEnabled = client.reuseRefreshTokens ?? false;
@@ -622,40 +619,40 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 	return response;
 }
 
+/** @deprecated Use getCachedUser from @/lib/auth/cache instead */
 export async function getUserById(userId: number) {
-	const db = await getDb();
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.id, userId));
-	return user ?? null;
+	const user = await getCachedUser(userId);
+	if (!user) {
+		return null;
+	}
+	return {
+		...user,
+		passwordHash: null as string | null,
+		emailVerified: user.emailVerified,
+	} as unknown as typeof schema.user.$inferSelect;
 }
 
 export async function getUserInfo(accessTokenValue: string, client: OAuthClient): Promise<UserInfoResponse | null> {
-	const db = await getDb();
-	const [row] = await db
-		.select()
-		.from(schema.oauthAccessToken)
-		.where(
-			and(eq(schema.oauthAccessToken.token, accessTokenValue), eq(schema.oauthAccessToken.clientId, client.clientId)),
-		);
-
-	if (!row) {
+	const cachedToken = await getCachedOAuthAccessToken(accessTokenValue);
+	if (!cachedToken || cachedToken.clientId !== client.clientId) {
 		return null;
 	}
 
-	if (row.expiresAt <= new Date()) {
+	if (cachedToken.expiresAt <= new Date()) {
 		return null;
 	}
 
-	const scopes = row.scope.split(" ");
+	const scopes = cachedToken.scope.split(" ");
 	if (!scopes.includes("openid")) {
 		return null;
 	}
 
 	const result: UserInfoResponse = {
-		sub: String(row.userId),
+		sub: String(cachedToken.userId),
 	};
 
-	if (row.userId) {
-		const user = await getUserById(row.userId);
+	if (cachedToken.userId) {
+		const user = await getCachedUser(cachedToken.userId);
 		if (user) {
 			if (scopes.includes("profile")) {
 				if (user.name) {
@@ -785,47 +782,41 @@ export async function getDiscoveryDocument(issuer: string): Promise<DiscoveryDoc
 }
 
 export async function getTokenIntrospection(token: string, clientId?: string): Promise<object> {
-	const db = await getDb();
-
 	// Check OAuth access token
 	if (clientId) {
-		const [row] = await db
-			.select()
-			.from(schema.oauthAccessToken)
-			.where(and(eq(schema.oauthAccessToken.token, token), eq(schema.oauthAccessToken.clientId, clientId)));
-
-		if (row) {
+		const tokenData = await getCachedOAuthAccessToken(token);
+		if (tokenData && tokenData.clientId === clientId) {
 			const now = new Date();
-			const active = row.expiresAt > now;
+			const active = tokenData.expiresAt > now;
 			return {
 				active,
-				client_id: row.clientId,
-				sub: row.userId ? String(row.userId) : undefined,
-				scope: row.scope,
+				client_id: tokenData.clientId,
+				sub: tokenData.userId ? String(tokenData.userId) : undefined,
+				scope: tokenData.scope,
 				token_type: "Bearer",
-				exp: Math.floor(row.expiresAt.getTime() / 1000),
-				iat: row.createdAt ? Math.floor(new Date(row.createdAt).getTime() / 1000) : undefined,
+				exp: Math.floor(tokenData.expiresAt.getTime() / 1000),
+				iat: tokenData.createdAt ? Math.floor(new Date(tokenData.createdAt).getTime() / 1000) : undefined,
 			};
 		}
 	} else {
-		const [row] = await db.select().from(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.token, token));
-
-		if (row) {
+		const tokenData = await getCachedOAuthAccessToken(token);
+		if (tokenData) {
 			const now = new Date();
-			const active = row.expiresAt > now;
+			const active = tokenData.expiresAt > now;
 			return {
 				active,
-				client_id: row.clientId,
-				sub: row.userId ? String(row.userId) : undefined,
-				scope: row.scope,
+				client_id: tokenData.clientId,
+				sub: tokenData.userId ? String(tokenData.userId) : undefined,
+				scope: tokenData.scope,
 				token_type: "Bearer",
-				exp: Math.floor(row.expiresAt.getTime() / 1000),
-				iat: row.createdAt ? Math.floor(new Date(row.createdAt).getTime() / 1000) : undefined,
+				exp: Math.floor(tokenData.expiresAt.getTime() / 1000),
+				iat: tokenData.createdAt ? Math.floor(new Date(tokenData.createdAt).getTime() / 1000) : undefined,
 			};
 		}
 	}
 
 	// Check personal access token
+	const db = await getDb();
 	const [pat] = await db
 		.select({
 			userId: schema.personalAccessToken.userId,

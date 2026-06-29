@@ -32,6 +32,16 @@ import {
 	usernameToEmail,
 	isValidUsername,
 } from "./utils";
+import {
+	toUserResult,
+	invalidateUser,
+	getUserByEmail,
+	getUserById,
+	userByIdKey,
+	userByUsernameKey,
+	userByEmailKey,
+	CACHE_TTL_USER,
+} from "./cache";
 import { isPreview } from "@/lib/email/preview";
 import { renderWelcome, renderLoginNotification, renderPasswordReset, renderTwoFactor } from "@/lib/email";
 import { sendEmail } from "@/lib/email/send";
@@ -75,35 +85,6 @@ function twoFactorUrl(token: string): string {
 	const url = new URL(base);
 	url.searchParams.set("token", token);
 	return url.toString();
-}
-
-function toUserResult(u: typeof schema.user.$inferSelect): UserResult {
-	return {
-		id: u.id,
-		username: u.username,
-		email: u.email,
-		name: u.name,
-		givenName: u.givenName,
-		familyName: u.familyName,
-		displayName: u.displayName,
-		nickname: u.nickname,
-		emailVerified: u.emailVerified,
-		image: u.image,
-		phoneNumber: u.phoneNumber,
-		phoneNumberVerified: u.phoneNumberVerified,
-		profileUrl: u.profileUrl,
-		websiteUrl: u.websiteUrl,
-		address: u.address,
-		externalId: u.externalId,
-		preferredLanguage: u.preferredLanguage,
-		locale: u.locale,
-		timezone: u.timezone,
-		loginShell: u.loginShell,
-		gecos: u.gecos,
-		roleId: u.roleId,
-		createdAt: u.createdAt,
-		updatedAt: u.updatedAt,
-	};
 }
 
 async function sendPasswordResetEmail(to: string, username: string | null, token: string) {
@@ -196,7 +177,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 		return err(new AuthError("Failed to create user"), "INTERNAL_ERROR");
 	}
 
-	const result = ok(toUserResult(inserted));
+	const userData = toUserResult(inserted);
 
 	if (!isPreview) {
 		const html = await renderWelcome(inserted.name ? { username: inserted.name } : {});
@@ -210,7 +191,15 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 		}
 	}
 
-	return result;
+	// Warm cache for the new user
+	const cache = await getCache();
+	await Promise.all([
+		cache.set(userByIdKey(inserted.id), userData, CACHE_TTL_USER),
+		cache.set(userByUsernameKey(inserted.username), userData, CACHE_TTL_USER),
+		cache.set(userByEmailKey(inserted.email), userData, CACHE_TTL_USER),
+	]);
+
+	return ok(userData);
 }
 
 // ── Password reset ─────────────────────────────────────────────────
@@ -220,20 +209,34 @@ export async function requestPasswordReset(input: RequestPasswordResetInput): Pr
 		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
 	}
 
+	const user = await getUserByEmail(input.email);
+	if (!user || !user.email) {
+		return ok(true as const);
+	}
+
 	const db = await getDb();
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
-	if (!user || !user.passwordHash) {
+	const [dbUser] = await db
+		.select({
+			id: schema.user.id,
+			passwordHash: schema.user.passwordHash,
+			email: schema.user.email,
+			name: schema.user.name,
+		})
+		.from(schema.user)
+		.where(eq(schema.user.id, user.id));
+
+	if (!dbUser || !dbUser.passwordHash) {
 		return ok(true as const);
 	}
 
 	const token = generateToken();
 	await db.insert(schema.passwordResetToken).values({
-		userId: user.id,
+		userId: dbUser.id,
 		tokenHash: hashSecret(token),
 		expires: inMinutes(PASSWORD_RESET_TOKEN_TTL_MINUTES),
 	});
 
-	await sendPasswordResetEmail(user.email, user.name, token);
+	await sendPasswordResetEmail(dbUser.email, dbUser.name, token);
 
 	return ok(true as const);
 }
@@ -258,8 +261,8 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 		return err(new AuthError("Invalid or expired reset token"), "INVALID_TOKEN");
 	}
 
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.id, resetToken.userId));
-	if (!user || !user.passwordHash) {
+	const user = await getUserById(resetToken.userId);
+	if (!user || !user.email) {
 		return err(new AuthError("Invalid or expired reset token"), "INVALID_TOKEN");
 	}
 
@@ -280,6 +283,9 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 		...sessions.map((session) => cache.delete(sessionKey(session.token))),
 	]);
 
+	// Invalidate cached user so stale data isn't served
+	await invalidateUser({ id: user.id, username: user.username, email: user.email });
+
 	return ok(true as const);
 }
 
@@ -290,20 +296,28 @@ export async function requestEmailTwoFactorLink(input: RequestEmailTwoFactorInpu
 		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
 	}
 
-	const db = await getDb();
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
+	const user = await getUserByEmail(input.email);
 	if (!user || !user.emailVerified) {
+		return ok(true as const);
+	}
+
+	const db = await getDb();
+	const [dbUser] = await db
+		.select({ id: schema.user.id, email: schema.user.email, name: schema.user.name })
+		.from(schema.user)
+		.where(eq(schema.user.id, user.id));
+	if (!dbUser || !dbUser.email) {
 		return ok(true as const);
 	}
 
 	const token = generateToken();
 	await db.insert(schema.emailTwoFactorToken).values({
-		userId: user.id,
+		userId: dbUser.id,
 		tokenHash: hashSecret(token),
 		expires: inMinutes(EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES),
 	});
 
-	await sendTwoFactorEmail(user.email, user.name, token);
+	await sendTwoFactorEmail(dbUser.email, dbUser.name, token);
 
 	return ok(true as const);
 }
@@ -325,7 +339,7 @@ export async function verifyEmailTwoFactorToken(input: VerifyEmailTwoFactorInput
 		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
 	}
 
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.id, twoFactorToken.userId));
+	const user = await getUserById(twoFactorToken.userId);
 	if (!user || !user.emailVerified) {
 		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
 	}
@@ -419,6 +433,16 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 
 	const cache = await getCache();
 	await cache.set(sessionKey(token), result, sessionTtlSeconds(expires));
+
+	// Warm user cache for subsequent lookups
+	{
+		const userResult = toUserResult(user);
+		await Promise.all([
+			cache.set(userByIdKey(user.id), userResult, CACHE_TTL_USER),
+			cache.set(userByUsernameKey(user.username), userResult, CACHE_TTL_USER),
+			cache.set(userByEmailKey(user.email), userResult, CACHE_TTL_USER),
+		]);
+	}
 
 	return ok(result);
 }

@@ -2,6 +2,7 @@ import { and, eq, gte, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession as getWebSession } from "@/lib/auth";
+import { getRoleById } from "@/lib/auth/cache";
 import type { UserResult } from "@/lib/auth/types";
 
 export const AdminPermission = {
@@ -132,16 +133,11 @@ export async function requirePermission(req: Request, permission: AdminPermissio
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
 
-	const db = await getDb();
-
 	if (admin.user.roleId === null) {
 		return Response.json({ error: "forbidden", message: "no role assigned" }, { status: 403 });
 	}
 
-	const [role] = await db
-		.select({ permissions: schema.role.permissions })
-		.from(schema.role)
-		.where(eq(schema.role.id, admin.user.roleId));
+	const role = await getRoleById(admin.user.roleId);
 
 	if (!role) {
 		return Response.json({ error: "forbidden", message: "role not found" }, { status: 403 });
