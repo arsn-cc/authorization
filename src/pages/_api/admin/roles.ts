@@ -1,48 +1,41 @@
-import { count, eq, asc, desc } from "drizzle-orm";
+import { count, ilike, or, asc, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getSession } from "@/lib/auth";
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
-}
-
-async function requireAdmin(req: Request): Promise<Response | null> {
-	const cookie = req.headers.get("cookie") ?? "";
-	const token = parseCookie(cookie, "session_token");
-	if (!token) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-	const session = await getSession(token);
-	if (!session.success || !session.data) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-	return null;
-}
+import { getAdminUser, unauthorized } from "./auth";
 
 export async function GET(req: Request): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
 	const db = await getDb();
 	const url = new URL(req.url);
 	const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
 	const perPage = Math.min(100, Math.max(1, Number(url.searchParams.get("per_page")) || 20));
+	const search = url.searchParams.get("search");
 	const sort = url.searchParams.get("sort") ?? "id";
-	const order = url.searchParams.get("order") ?? "asc";
+	const order = url.searchParams.get("order") ?? "desc";
 
-	const [totalResult] = await db.select({ value: count() }).from(schema.role);
+	const searchCond = search
+		? or(ilike(schema.role.name, `%${search}%`), ilike(schema.role.description ?? "", `%${search}%`))
+		: undefined;
+
+	const [totalResult] = await db.select({ value: count() }).from(schema.role).where(searchCond);
 	const total = totalResult?.value ?? 0;
 
 	const orderColumn = sort === "name" ? schema.role.name : schema.role.id;
 	const orderDir = order === "asc" ? asc : desc;
 
 	const roles = await db
-		.select()
+		.select({
+			id: schema.role.id,
+			name: schema.role.name,
+			description: schema.role.description,
+			permissions: schema.role.permissions,
+		})
 		.from(schema.role)
+		.where(searchCond)
 		.orderBy(orderDir(orderColumn))
 		.limit(perPage)
 		.offset((page - 1) * perPage);
@@ -51,30 +44,25 @@ export async function GET(req: Request): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
-	const body = (await req.json()) as { name?: string; description?: string; permissions?: string[] };
+	const body = (await req.json()) as Record<string, unknown>;
 	if (!body.name) {
-		return Response.json({ error: "name_required" }, { status: 400 });
+		return Response.json({ error: "missing_name" }, { status: 400 });
 	}
 
 	const db = await getDb();
-	const [existing] = await db.select().from(schema.role).where(eq(schema.role.name, body.name)).limit(1);
-	if (existing) {
-		return Response.json({ error: "role_exists" }, { status: 409 });
-	}
-
 	const [inserted] = await db
 		.insert(schema.role)
 		.values({
-			name: body.name,
-			description: body.description ?? null,
-			permissions: JSON.stringify(body.permissions ?? []),
+			name: body.name as string,
+			description: (body.description as string | null) ?? null,
+			permissions: (body.permissions as string | null) ?? "[]",
 		})
-		.returning();
+		.returning({ id: schema.role.id, name: schema.role.name });
 
 	return Response.json(inserted, { status: 201 });
 }

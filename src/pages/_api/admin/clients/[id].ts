@@ -1,63 +1,44 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getSession } from "@/lib/auth";
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
-}
-
-async function requireAdmin(req: Request): Promise<Response | null> {
-	const cookie = req.headers.get("cookie") ?? "";
-	const token = parseCookie(cookie, "session_token");
-	if (!token) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-	const session = await getSession(token);
-	if (!session.success || !session.data) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-	return null;
-}
+import { getAdminUser, unauthorized } from "../auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
 	const db = await getDb();
-	const id = Number(params.id) || params.id;
 	const [client] = await db
 		.select()
 		.from(schema.client)
-		.where(typeof id === "number" ? eq(schema.client.id, id) : eq(schema.client.clientId, id));
+		.where(eq(schema.client.id, Number(params.id)));
 
 	if (!client) {
 		return Response.json({ error: "not_found" }, { status: 404 });
 	}
 
-	return Response.json(client);
+	const { clientSecret: _secret, ...safe } = client;
+	return Response.json(safe);
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
 	const body = (await req.json()) as Record<string, unknown>;
 	const db = await getDb();
-	const id = Number(params.id) || params.id;
-	const condition = typeof id === "number" ? eq(schema.client.id, id) : eq(schema.client.clientId, id);
+	const updates: Record<string, unknown> = {};
 
 	const allowedFields = [
 		"name",
-		"clientSecret",
 		"redirectUris",
 		"grants",
 		"scopes",
+		"clientSecret",
 		"requireConsent",
 		"pkceRequired",
 		"accessTokenTtl",
@@ -69,37 +50,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		"acsUrl",
 		"samlCertificate",
 		"samlBinding",
-		"casLoginUrl",
-		"casLogoutUrl",
-		"casServiceTicketTtl",
 	] as const;
 
-	const updates: Record<string, unknown> = {};
 	for (const field of allowedFields) {
 		if (body[field] !== undefined) {
 			const val = body[field];
 			if (
 				field === "requireConsent" ||
 				field === "pkceRequired" ||
-				field === "dpopBound" ||
 				field === "refreshTokenRotationEnabled" ||
-				field === "reuseRefreshTokens"
+				field === "reuseRefreshTokens" ||
+				field === "dpopBound"
 			) {
 				updates[field] = val === true ? 1 : val === false ? 0 : null;
-			} else if (field === "accessTokenTtl" || field === "casServiceTicketTtl") {
-				updates[field] = Number(val) || null;
+			} else if (field === "accessTokenTtl") {
+				updates[field] = val ? Number(val) : null;
 			} else {
 				updates[field] = val === null ? null : (val as string);
 			}
 		}
 	}
 
-	updates.updatedAt = new Date();
-
 	const [updated] = await db
 		.update(schema.client)
 		.set(updates)
-		.where(condition)
+		.where(eq(schema.client.id, Number(params.id)))
 		.returning({ id: schema.client.id, clientId: schema.client.clientId, name: schema.client.name });
 
 	if (!updated) {
@@ -110,15 +85,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
 	const db = await getDb();
-	const id = Number(params.id) || params.id;
-	const condition = typeof id === "number" ? eq(schema.client.id, id) : eq(schema.client.clientId, id);
+	const { rowCount } = await db.delete(schema.client).where(eq(schema.client.id, Number(params.id)));
 
-	await db.delete(schema.client).where(condition);
+	if (!rowCount) {
+		return Response.json({ error: "not_found" }, { status: 404 });
+	}
 	return new Response(null, { status: 204 });
 }

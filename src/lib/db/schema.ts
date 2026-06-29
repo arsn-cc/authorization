@@ -178,6 +178,24 @@ const casTicket = pgTable("cas_ticket", {
 	usedAt: timestamp("used_at"),
 });
 
+// ── Personal Access Token ───────────────────────────────────
+// Long-lived API tokens for machine-to-machine auth.
+// Used by the admin dashboard and other services that need
+// persistent credentials instead of short-lived OAuth tokens.
+const personalAccessToken = pgTable("personal_access_token", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	token: text("token").notNull().unique(),
+	name: text("name").notNull(),
+	scopes: text("scopes").notNull().default("admin:read"),
+	lastUsedAt: timestamp("last_used_at"),
+	expiresAt: timestamp("expires_at"),
+	revokedAt: timestamp("revoked_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 /** Session fields shown in login notification emails. */
 export const sessionDisplayFields = [
 	{ key: "ip", label: "IP address" },
@@ -315,6 +333,7 @@ export const schema = {
 	oauthAccessToken,
 	oauthRefreshToken,
 	casTicket,
+	personalAccessToken,
 	client,
 	role,
 	permission,

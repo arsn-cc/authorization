@@ -1,30 +1,15 @@
 import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getSession, usernameToEmail, hashPassword, isValidUsername } from "@/lib/auth";
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
-}
-
-async function requireAdmin(req: Request): Promise<Response | null> {
-	const cookie = req.headers.get("cookie") ?? "";
-	const token = parseCookie(cookie, "session_token");
-	if (!token) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-	const session = await getSession(token);
-	if (!session.success || !session.data) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-	return null;
-}
+import { getCache } from "@/lib/cache";
+import { usernameToEmail, hashPassword, isValidUsername } from "@/lib/auth";
+import { sessionKey } from "@/lib/auth/utils";
+import { getAdminUser, unauthorized } from "../auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
 	const db = await getDb();
@@ -66,9 +51,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
 	const body = (await req.json()) as Record<string, unknown>;
@@ -140,13 +125,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const authError = await requireAdmin(req);
-	if (authError) {
-		return authError;
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return unauthorized();
 	}
 
 	const db = await getDb();
+	const cache = await getCache();
 	const userId = Number(params.id);
+
+	const sessions = await db
+		.select({ id: schema.session.id, token: schema.session.token })
+		.from(schema.session)
+		.where(eq(schema.session.userId, userId));
 
 	await Promise.all([
 		db.delete(schema.session).where(eq(schema.session.userId, userId)),
@@ -154,6 +145,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.userId, userId)),
 		db.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.userId, userId)),
 		db.delete(schema.user).where(eq(schema.user.id, userId)),
+		...sessions.map((s) => cache.delete(sessionKey(s.token))),
 	]);
 
 	return new Response(null, { status: 204 });

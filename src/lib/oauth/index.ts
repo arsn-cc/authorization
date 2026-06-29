@@ -787,30 +787,70 @@ export async function getDiscoveryDocument(issuer: string): Promise<DiscoveryDoc
 export async function getTokenIntrospection(token: string, clientId?: string): Promise<object> {
 	const db = await getDb();
 
-	const conditions = [eq(schema.oauthAccessToken.token, token)];
+	// Check OAuth access token
 	if (clientId) {
-		conditions.push(eq(schema.oauthAccessToken.clientId, clientId));
+		const [row] = await db
+			.select()
+			.from(schema.oauthAccessToken)
+			.where(and(eq(schema.oauthAccessToken.token, token), eq(schema.oauthAccessToken.clientId, clientId)));
+
+		if (row) {
+			const now = new Date();
+			const active = row.expiresAt > now;
+			return {
+				active,
+				client_id: row.clientId,
+				sub: row.userId ? String(row.userId) : undefined,
+				scope: row.scope,
+				token_type: "Bearer",
+				exp: Math.floor(row.expiresAt.getTime() / 1000),
+				iat: row.createdAt ? Math.floor(new Date(row.createdAt).getTime() / 1000) : undefined,
+			};
+		}
+	} else {
+		const [row] = await db.select().from(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.token, token));
+
+		if (row) {
+			const now = new Date();
+			const active = row.expiresAt > now;
+			return {
+				active,
+				client_id: row.clientId,
+				sub: row.userId ? String(row.userId) : undefined,
+				scope: row.scope,
+				token_type: "Bearer",
+				exp: Math.floor(row.expiresAt.getTime() / 1000),
+				iat: row.createdAt ? Math.floor(new Date(row.createdAt).getTime() / 1000) : undefined,
+			};
+		}
 	}
 
-	const [row] = await db
-		.select()
-		.from(schema.oauthAccessToken)
-		.where(and(...conditions));
+	// Check personal access token
+	const [pat] = await db
+		.select({
+			userId: schema.personalAccessToken.userId,
+			name: schema.personalAccessToken.name,
+			scopes: schema.personalAccessToken.scopes,
+			expiresAt: schema.personalAccessToken.expiresAt,
+			revokedAt: schema.personalAccessToken.revokedAt,
+			createdAt: schema.personalAccessToken.createdAt,
+		})
+		.from(schema.personalAccessToken)
+		.where(and(eq(schema.personalAccessToken.token, token), isNull(schema.personalAccessToken.revokedAt)));
 
-	if (!row) {
-		return { active: false };
+	if (pat) {
+		const now = new Date();
+		const active = !pat.expiresAt || pat.expiresAt > now;
+		return {
+			active,
+			sub: String(pat.userId),
+			scope: pat.scopes,
+			token_type: "Bearer",
+			name: pat.name,
+			exp: pat.expiresAt ? Math.floor(pat.expiresAt.getTime() / 1000) : undefined,
+			iat: Math.floor(new Date(pat.createdAt).getTime() / 1000),
+		};
 	}
 
-	const now = new Date();
-	const active = row.expiresAt > now;
-
-	return {
-		active,
-		client_id: row.clientId,
-		sub: row.userId ? String(row.userId) : undefined,
-		scope: row.scope,
-		token_type: "Bearer",
-		exp: Math.floor(row.expiresAt.getTime() / 1000),
-		iat: row.createdAt ? Math.floor(new Date(row.createdAt).getTime() / 1000) : undefined,
-	};
+	return { active: false };
 }
