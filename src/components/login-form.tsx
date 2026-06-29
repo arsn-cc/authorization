@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLegend } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,20 @@ async function loginAction(
 	return loginUser({ login, password });
 }
 
+function setSessionCookie(token: string, expires: Date) {
+	const maxAge = Math.max(0, Math.floor((expires.getTime() - Date.now()) / 1000));
+	document.cookie = `session_token=${encodeURIComponent(token)}; Path=/; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
 export function LoginForm({ registrationDisabled }: { registrationDisabled?: boolean }) {
 	const [state, formAction, isPending] = useActionState(loginAction, null);
+
+	useEffect(() => {
+		if (state?.success === true) {
+			setSessionCookie(state.data.token, state.data.expires);
+			window.location.href = "https://arsn.cc";
+		}
+	}, [state]);
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8">
@@ -38,8 +50,6 @@ export function LoginForm({ registrationDisabled }: { registrationDisabled?: boo
 				</Field>
 
 				{state?.success === false && <p className="text-destructive text-sm">{state.error.message}</p>}
-
-				{state?.success === true && <p className="text-sm text-green-600">Logged in successfully!</p>}
 
 				<Button type="submit" className="w-full" disabled={isPending}>
 					{isPending ? "Logging in..." : "Log in"}
