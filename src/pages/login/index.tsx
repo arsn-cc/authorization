@@ -1,7 +1,8 @@
 import { LoginForm } from "@/components/login-form";
+import { getSetting } from "@/lib/settings";
 
-export default function LoginPage() {
-	const registrationDisabled = process.env.DISABLE_REGISTRATION === "true";
+export default async function LoginPage() {
+	const registrationDisabled = (await getSetting("disable_registration")) === "true";
 	return <LoginForm registrationDisabled={registrationDisabled} />;
 }
 

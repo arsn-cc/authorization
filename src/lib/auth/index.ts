@@ -42,6 +42,7 @@ import {
 	userByEmailKey,
 	CACHE_TTL_USER,
 } from "./cache";
+import { getSetting } from "@/lib/settings";
 import { isPreview } from "@/lib/email/preview";
 import { renderWelcome, renderLoginNotification, renderPasswordReset, renderTwoFactor } from "@/lib/email";
 import { sendEmail } from "@/lib/email/send";
@@ -128,7 +129,8 @@ async function sendTwoFactorEmail(to: string, username: string | null, token: st
 // ── Registration ───────────────────────────────────────────────────
 
 export async function registerUser(input: RegisterInput): Promise<AuthResult<UserResult>> {
-	if (process.env.DISABLE_REGISTRATION === "true") {
+	const registrationDisabled = await getSetting("disable_registration");
+	if (registrationDisabled === "true") {
 		return err(new AuthError("Registration is disabled"), "REGISTRATION_DISABLED");
 	}
 	if (!isValidUsername(input.username)) {

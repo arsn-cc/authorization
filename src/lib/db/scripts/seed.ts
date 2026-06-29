@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../index";
 import { schema } from "../schema";
+import { seedDefaultSettings } from "@/lib/settings";
 
 const PERMISSIONS = [
 	{ name: "user:read", description: "View users" },
@@ -72,6 +73,10 @@ async function seed() {
 			console.log(`  ~ ${role.name} (exists)`);
 		}
 	}
+
+	console.log("\nSeeding default settings...");
+	await seedDefaultSettings();
+	console.log("  + primary_color, disable_registration");
 
 	console.log("\nDone.");
 	process.exit(0);

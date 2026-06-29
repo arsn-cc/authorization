@@ -23,6 +23,8 @@ export const AdminPermission = {
 	TokensWrite: "admin:tokens:write",
 	TokensDelete: "admin:tokens:delete",
 	StatsRead: "admin:stats:read",
+	SettingsRead: "admin:settings:read",
+	SettingsWrite: "admin:settings:write",
 } as const;
 
 export type AdminPermission = (typeof AdminPermission)[keyof typeof AdminPermission];

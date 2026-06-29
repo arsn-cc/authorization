@@ -196,6 +196,16 @@ const personalAccessToken = pgTable("personal_access_token", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── Setting ────────────────────────────────────────────────────────
+// Key-value store for server-wide configuration. Mutated via the admin
+// API (settings endpoint) instead of env vars at deploy time.
+const setting = pgTable("setting", {
+	id: serial("id").primaryKey(),
+	key: text("key").notNull().unique(),
+	value: text("value").notNull(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 /** Session fields shown in login notification emails. */
 export const sessionDisplayFields = [
 	{ key: "ip", label: "IP address" },
@@ -334,6 +344,7 @@ export const schema = {
 	oauthRefreshToken,
 	casTicket,
 	personalAccessToken,
+	setting,
 	client,
 	role,
 	permission,

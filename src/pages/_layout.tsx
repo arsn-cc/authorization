@@ -3,14 +3,15 @@ import "@/styles/globals.css";
 import type { ReactNode } from "react";
 import { RouterProvider } from "waku-jotai/router";
 import { ThemeProvider } from "@/components/provider/theme-provider";
+import { getSetting } from "@/lib/settings";
+
 console.log(`[startup] db=postgres-js cache=redis storage=s3`);
 
 type RootLayoutProps = { children: ReactNode };
 
 export default async function RootLayout({ children }: RootLayoutProps) {
 	const data = await getData();
-
-	const primaryColor = process.env.PRIMARY_COLOR;
+	const primaryColor = await getSetting("primary_color");
 
 	return (
 		<div className="font-['Nunito']">
