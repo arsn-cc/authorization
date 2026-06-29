@@ -6,15 +6,15 @@ export class AuthError extends Error {
 }
 
 export class ExistingUserError extends AuthError {
-	constructor(email: string) {
-		super(`User with email ${email} already exists`);
+	constructor(username: string) {
+		super(`User ${username} already exists`);
 		this.name = "ExistingUserError";
 	}
 }
 
 export class InvalidCredentialsError extends AuthError {
 	constructor() {
-		super("Invalid email or password");
+		super("Invalid login or password");
 		this.name = "InvalidCredentialsError";
 	}
 }
@@ -27,13 +27,23 @@ export class SessionNotFoundError extends AuthError {
 }
 
 export interface RegisterInput {
-	email: string;
+	username: string;
 	password: string;
 	name?: string;
+	givenName?: string;
+	familyName?: string;
+	displayName?: string;
+	nickname?: string;
+	phoneNumber?: string;
+	profileUrl?: string;
+	websiteUrl?: string;
+	preferredLanguage?: string;
+	locale?: string;
+	timezone?: string;
 }
 
 export interface LoginInput {
-	email: string;
+	login: string;
 	password: string;
 	userAgent?: string;
 	ip?: string;
@@ -64,10 +74,26 @@ export interface VerifyEmailTwoFactorInput {
 
 export interface UserResult {
 	id: number;
+	username: string;
 	email: string;
 	name: string | null;
+	givenName: string | null;
+	familyName: string | null;
+	displayName: string | null;
+	nickname: string | null;
 	emailVerified: Date | null;
 	image: string | null;
+	phoneNumber: string | null;
+	phoneNumberVerified: Date | null;
+	profileUrl: string | null;
+	websiteUrl: string | null;
+	address: string | null;
+	externalId: string | null;
+	preferredLanguage: string | null;
+	locale: string | null;
+	timezone: string | null;
+	loginShell: string | null;
+	gecos: string | null;
 	roleId: number | null;
 	createdAt: Date;
 	updatedAt: Date;

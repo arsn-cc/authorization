@@ -27,6 +27,15 @@ export function generateToken(): string {
 	return randomBytes(32).toString("hex");
 }
 
+export function usernameToEmail(username: string): string {
+	const domain = process.env.EMAIL_DOMAIN || "arsn.cc";
+	return `${username}@${domain}`;
+}
+
+export function isValidUsername(username: string): boolean {
+	return /^[a-zA-Z0-9._-]{3,64}$/.test(username);
+}
+
 export function hashSecret(secret: string): string {
 	return createHash("sha256").update(secret).digest("hex");
 }

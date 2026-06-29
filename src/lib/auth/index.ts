@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
@@ -29,10 +29,14 @@ import {
 	inDays,
 	inMinutes,
 	sessionTtlSeconds,
+	usernameToEmail,
+	isValidUsername,
 } from "./utils";
 import { isPreview } from "@/lib/email/preview";
 import { renderWelcome, renderLoginNotification, renderPasswordReset, renderTwoFactor } from "@/lib/email";
 import { sendEmail } from "@/lib/email/send";
+
+export { usernameToEmail, isValidUsername, hashPassword, verifyPassword, generateToken } from "./utils";
 
 export type {
 	RegisterInput,
@@ -71,6 +75,35 @@ function twoFactorUrl(token: string): string {
 	const url = new URL(base);
 	url.searchParams.set("token", token);
 	return url.toString();
+}
+
+function toUserResult(u: typeof schema.user.$inferSelect): UserResult {
+	return {
+		id: u.id,
+		username: u.username,
+		email: u.email,
+		name: u.name,
+		givenName: u.givenName,
+		familyName: u.familyName,
+		displayName: u.displayName,
+		nickname: u.nickname,
+		emailVerified: u.emailVerified,
+		image: u.image,
+		phoneNumber: u.phoneNumber,
+		phoneNumberVerified: u.phoneNumberVerified,
+		profileUrl: u.profileUrl,
+		websiteUrl: u.websiteUrl,
+		address: u.address,
+		externalId: u.externalId,
+		preferredLanguage: u.preferredLanguage,
+		locale: u.locale,
+		timezone: u.timezone,
+		loginShell: u.loginShell,
+		gecos: u.gecos,
+		roleId: u.roleId,
+		createdAt: u.createdAt,
+		updatedAt: u.updatedAt,
+	};
 }
 
 async function sendPasswordResetEmail(to: string, username: string | null, token: string) {
@@ -117,26 +150,45 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 	if (process.env.DISABLE_REGISTRATION === "true") {
 		return err(new AuthError("Registration is disabled"), "REGISTRATION_DISABLED");
 	}
-	if (!isValidEmail(input.email)) {
-		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
+	if (!isValidUsername(input.username)) {
+		return err(
+			new AuthError("Username must be 3-64 characters; letters, numbers, dots, hyphens, underscores"),
+			"VALIDATION_ERROR",
+		);
 	}
 	if (!input.password || input.password.length < 8) {
 		return err(new AuthError("Password must be at least 8 characters"), "VALIDATION_ERROR");
 	}
 
+	const email = usernameToEmail(input.username);
 	const db = await getDb();
 
-	const existing = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
-	if (existing.length > 0) {
-		return err(new ExistingUserError(input.email), "EXISTING_USER");
+	const [existing] = await db
+		.select()
+		.from(schema.user)
+		.where(or(eq(schema.user.username, input.username), eq(schema.user.email, email)))
+		.limit(1);
+	if (existing) {
+		return err(new ExistingUserError(input.username), "EXISTING_USER");
 	}
 
 	const [inserted] = await db
 		.insert(schema.user)
 		.values({
-			email: input.email,
+			username: input.username,
+			email,
 			passwordHash: hashPassword(input.password),
 			name: input.name ?? null,
+			givenName: input.givenName ?? null,
+			familyName: input.familyName ?? null,
+			displayName: input.displayName ?? null,
+			nickname: input.nickname ?? null,
+			phoneNumber: input.phoneNumber ?? null,
+			profileUrl: input.profileUrl ?? null,
+			websiteUrl: input.websiteUrl ?? null,
+			preferredLanguage: input.preferredLanguage ?? null,
+			locale: input.locale ?? null,
+			timezone: input.timezone ?? null,
 		})
 		.returning();
 
@@ -144,16 +196,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 		return err(new AuthError("Failed to create user"), "INTERNAL_ERROR");
 	}
 
-	const result = ok({
-		id: inserted.id,
-		email: inserted.email,
-		name: inserted.name,
-		emailVerified: inserted.emailVerified,
-		image: inserted.image,
-		roleId: inserted.roleId,
-		createdAt: inserted.createdAt,
-		updatedAt: inserted.updatedAt,
-	});
+	const result = ok(toUserResult(inserted));
 
 	if (!isPreview) {
 		const html = await renderWelcome(inserted.name ? { username: inserted.name } : {});
@@ -298,13 +341,15 @@ export async function verifyEmailTwoFactorToken(input: VerifyEmailTwoFactorInput
 // ── Login ───────────────────────────────────────────────────────────
 
 export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResult>> {
-	if (!input.email || !input.password) {
-		return err(new AuthError("Email and password are required"), "VALIDATION_ERROR");
+	if (!input.login || !input.password) {
+		return err(new AuthError("Login and password are required"), "VALIDATION_ERROR");
 	}
 
 	const db = await getDb();
 
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, input.email));
+	const lookup = input.login.includes("@") ? eq(schema.user.email, input.login) : eq(schema.user.username, input.login);
+
+	const [user] = await db.select().from(schema.user).where(lookup);
 	if (!user || !user.passwordHash) {
 		return err(new InvalidCredentialsError(), "INVALID_CREDENTIALS");
 	}
@@ -366,16 +411,7 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 	}
 
 	const result: LoginResult = {
-		user: {
-			id: user.id,
-			email: user.email,
-			name: user.name,
-			emailVerified: user.emailVerified,
-			image: user.image,
-			roleId: user.roleId,
-			createdAt: user.createdAt,
-			updatedAt: user.updatedAt,
-		},
+		user: toUserResult(user),
 		token: inserted.token,
 		expires: inserted.expires,
 		sessionId: inserted.id,
@@ -428,16 +464,7 @@ export async function getSession(token: string): Promise<AuthResult<Authenticate
 		token: row.session.token,
 		expires: row.session.expires,
 		usedAt: row.session.usedAt,
-		user: {
-			id: row.user.id,
-			email: row.user.email,
-			name: row.user.name,
-			emailVerified: row.user.emailVerified,
-			image: row.user.image,
-			roleId: row.user.roleId,
-			createdAt: row.user.createdAt,
-			updatedAt: row.user.updatedAt,
-		},
+		user: toUserResult(row.user),
 	};
 
 	await cache.set(sessionKey(token), result, sessionTtlSeconds(result.expires));

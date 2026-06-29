@@ -12,9 +12,9 @@ async function loginAction(
 	prevState: AuthResult<LoginResult> | null,
 	formData: FormData,
 ): Promise<AuthResult<LoginResult> | null> {
-	const email = formData.get("email") as string;
+	const login = formData.get("login") as string;
 	const password = formData.get("password") as string;
-	return loginUser({ email, password });
+	return loginUser({ login, password });
 }
 
 export function LoginForm({ registrationDisabled }: { registrationDisabled?: boolean }) {
@@ -28,8 +28,8 @@ export function LoginForm({ registrationDisabled }: { registrationDisabled?: boo
 
 			<form action={formAction} className="mt-6 space-y-4">
 				<Field>
-					<FieldLegend variant="label">Email</FieldLegend>
-					<Input name="email" type="email" placeholder="name@example.com" required disabled={isPending} />
+					<FieldLegend variant="label">Username or Email</FieldLegend>
+					<Input name="login" placeholder="username or email" required disabled={isPending} />
 				</Field>
 
 				<Field>

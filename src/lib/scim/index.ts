@@ -1,7 +1,7 @@
-import { eq, asc, desc, count as drizzleCount } from "drizzle-orm";
+import { eq, asc, desc, or, count as drizzleCount } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import type { ScimUser, ScimGroup, ScimListResponse, ScimSearchParams, ScimMember } from "./types";
+import type { ScimUser, ScimGroup, ScimName, ScimListResponse, ScimSearchParams, ScimMember } from "./types";
 
 export type {
 	ScimUser,
@@ -23,17 +23,40 @@ const LIST_RESPONSE_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:ListResponse
 
 function userToScim(u: {
 	id: number;
+	username: string;
 	email: string;
 	name: string | null;
+	givenName: string | null;
+	familyName: string | null;
+	displayName: string | null;
+	nickname: string | null;
+	phoneNumber: string | null;
+	profileUrl: string | null;
+	externalId: string | null;
+	preferredLanguage: string | null;
+	locale: string | null;
+	timezone: string | null;
 	emailVerified: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
 }): ScimUser {
+	const name: ScimName = {};
+	if (u.name) { name.formatted = u.name; }
+	if (u.givenName) { name.givenName = u.givenName; }
+	if (u.familyName) { name.familyName = u.familyName; }
 	return {
 		id: String(u.id),
-		userName: u.email,
-		...(u.name ? { displayName: u.name, name: { formatted: u.name } } : {}),
+		userName: u.username,
+		...(Object.keys(name).length > 0 ? { name } : {}),
+		...(u.displayName ? { displayName: u.displayName } : {}),
+		...(u.nickname ? { nickname: u.nickname } : {}),
 		emails: [{ value: u.email, primary: true }],
+		...(u.phoneNumber ? { phoneNumbers: [{ value: u.phoneNumber }] } : {}),
+		...(u.profileUrl ? { photos: [{ value: u.profileUrl }] } : {}),
+		...(u.externalId ? { externalId: u.externalId } : {}),
+		...(u.preferredLanguage ? { preferredLanguage: u.preferredLanguage } : {}),
+		...(u.locale ? { locale: u.locale } : {}),
+		...(u.timezone ? { timezone: u.timezone } : {}),
 		active: u.emailVerified !== null,
 		meta: {
 			resourceType: "User",
@@ -84,9 +107,9 @@ export async function listUsers(params: ScimSearchParams): Promise<ScimListRespo
 
 	let whereCondition: unknown;
 	if (params.filter) {
-		const emailMatch = params.filter.match(/^(?:userName|email)\s+eq\s+"(.+)"$/);
-		if (emailMatch) {
-			whereCondition = eq(schema.user.email, emailMatch[1]!);
+		const filterMatch = params.filter.match(/^(?:userName|email)\s+eq\s+"(.+)"$/);
+		if (filterMatch) {
+			whereCondition = or(eq(schema.user.username, filterMatch[1]!), eq(schema.user.email, filterMatch[1]!));
 		}
 	}
 
@@ -100,8 +123,8 @@ export async function listUsers(params: ScimSearchParams): Promise<ScimListRespo
 	const orderBy =
 		params.sortBy === "userName" || params.sortBy === "email"
 			? params.sortOrder === "descending"
-				? desc(schema.user.email)
-				: asc(schema.user.email)
+				? desc(schema.user.username)
+				: asc(schema.user.username)
 			: params.sortBy === "displayName" || params.sortBy === "name"
 				? params.sortOrder === "descending"
 					? desc(schema.user.name)
@@ -151,11 +174,25 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 		throw new Error("userName or email is required");
 	}
 
+	const email = userName.includes("@") ? userName : `${userName}@arsn.cc`;
+
 	const [inserted] = await db
 		.insert(schema.user)
 		.values({
-			email: userName,
-			name: input.displayName ?? input.name?.formatted ?? null,
+			username: userName.includes("@") ? userName.split("@")[0]! : userName,
+			email,
+			name: input.name?.formatted ?? null,
+			givenName: input.name?.givenName ?? null,
+			familyName: input.name?.familyName ?? null,
+			displayName: input.displayName ?? null,
+			nickname: input.nickname ?? null,
+			phoneNumber: input.phoneNumbers?.[0]?.value ?? null,
+			profileUrl: input.photos?.[0]?.value ?? null,
+			externalId: input.externalId ?? null,
+			preferredLanguage: input.preferredLanguage ?? null,
+			locale: input.locale ?? null,
+			timezone: input.timezone ?? null,
+			emailVerified: input.active !== false ? new Date() : null,
 		})
 		.returning();
 
@@ -171,10 +208,37 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 
 	const values: Record<string, unknown> = { updatedAt: new Date() };
 	if (input.userName) {
-		values.email = input.userName;
+		values.username = input.userName;
+		values.email = input.userName.includes("@") ? input.userName : `${input.userName}@arsn.cc`;
+	}
+	if (input.name) {
+		if (input.name.formatted !== undefined) { values.name = input.name.formatted; }
+		if (input.name.givenName !== undefined) { values.givenName = input.name.givenName; }
+		if (input.name.familyName !== undefined) { values.familyName = input.name.familyName; }
 	}
 	if (input.displayName !== undefined) {
-		values.name = input.displayName;
+		values.displayName = input.displayName;
+	}
+	if (input.nickname !== undefined) {
+		values.nickname = input.nickname;
+	}
+	if (input.phoneNumbers !== undefined) {
+		values.phoneNumber = input.phoneNumbers[0]?.value ?? null;
+	}
+	if (input.photos !== undefined) {
+		values.profileUrl = input.photos[0]?.value ?? null;
+	}
+	if (input.externalId !== undefined) {
+		values.externalId = input.externalId;
+	}
+	if (input.preferredLanguage !== undefined) {
+		values.preferredLanguage = input.preferredLanguage;
+	}
+	if (input.locale !== undefined) {
+		values.locale = input.locale;
+	}
+	if (input.timezone !== undefined) {
+		values.timezone = input.timezone;
 	}
 	if (input.active !== undefined) {
 		values.emailVerified = input.active ? new Date() : null;

@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { randomBytes, scryptSync } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { isValidUsername, usernameToEmail } from "@/lib/auth/utils";
 import { getDb } from "../index";
 import { schema } from "../schema";
 
@@ -52,8 +53,17 @@ async function createUser() {
 		output: process.stdout,
 	});
 
-	const email = await rl.question("Email: ");
+	console.log("3-64 characters, letters, numbers, dots, hyphens, underscores");
+	const username = await rl.question("Username: ");
 	const name = (await rl.question("Name: ")) || "User";
+
+	if (!isValidUsername(username)) {
+		console.error("Invalid username. Use 3-64 characters, letters, numbers, dots, hyphens, underscores");
+		rl.close();
+		process.exit(1);
+	}
+
+	const email = usernameToEmail(username);
 
 	rl.close();
 
@@ -70,23 +80,24 @@ async function createUser() {
 		process.exit(1);
 	}
 
-	const existingUser = await db.select().from(schema.user).where(eq(schema.user.email, email));
+	const existingUser = await db.select().from(schema.user).where(eq(schema.user.username, username));
 	if (existingUser.length > 0) {
-		console.log(`User ${email} already exists.`);
+		console.log(`User ${username} already exists.`);
 		process.exit(0);
 	}
 
 	const adminRole = await db.select().from(schema.role).where(eq(schema.role.name, "admin"));
 
 	await db.insert(schema.user).values({
-		name,
+		username,
 		email,
+		name,
 		passwordHash: hashPassword(password),
 		roleId: adminRole[0]?.id ?? null,
 		emailVerified: new Date(),
 	});
 
-	console.log(`\nUser ${email} created successfully.`);
+	console.log(`\nUser ${username} (${email}) created successfully.`);
 	process.exit(0);
 }
 

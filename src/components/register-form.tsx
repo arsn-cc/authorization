@@ -12,10 +12,10 @@ async function registerAction(
 	_prevState: AuthResult<UserResult> | null,
 	formData: FormData,
 ): Promise<AuthResult<UserResult> | null> {
-	const email = formData.get("email") as string;
+	const username = formData.get("username") as string;
 	const password = formData.get("password") as string;
 	const name = formData.get("name") as string;
-	return registerUser({ email, password, ...(name ? { name } : {}) });
+	return registerUser({ username, password, ...(name ? { name } : {}) });
 }
 
 export function RegisterForm() {
@@ -34,8 +34,11 @@ export function RegisterForm() {
 				</Field>
 
 				<Field>
-					<FieldLegend variant="label">Email</FieldLegend>
-					<Input name="email" type="email" placeholder="name@example.com" required disabled={isPending} />
+					<FieldLegend variant="label">Username</FieldLegend>
+					<Input name="username" placeholder="Choose a username" required disabled={isPending} />
+					<p className="text-muted-foreground mt-1 text-xs">
+						3-64 characters, letters, numbers, dots, hyphens, underscores
+					</p>
 				</Field>
 
 				<Field>
