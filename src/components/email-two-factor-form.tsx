@@ -55,6 +55,7 @@ export function EmailTwoFactorForm({
 					setSessionCookie(result.data.token, result.data.expires);
 					window.location.href = "https://arsn.cc";
 				}
+				return;
 			});
 		}
 	}, [code, pendingAuthToken]);
