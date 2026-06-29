@@ -2,7 +2,7 @@ import { and, eq, gte, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession as getWebSession } from "@/lib/auth";
-import { getRoleById } from "@/lib/auth/cache";
+import { getRoleById, toUserResult } from "@/lib/auth/cache";
 import type { UserResult } from "@/lib/auth/types";
 
 export const AdminPermission = {
@@ -57,7 +57,7 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 		if (row) {
 			return {
 				userId: row.token.userId!,
-				user: row.user,
+				user: toUserResult(row.user),
 			};
 		}
 
@@ -79,32 +79,7 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 
 			return {
 				userId: patRow.user.id,
-				user: {
-					id: patRow.user.id,
-					username: patRow.user.username,
-					email: patRow.user.email,
-					name: patRow.user.name,
-					givenName: null,
-					familyName: null,
-					displayName: null,
-					nickname: null,
-					emailVerified: patRow.user.emailVerified,
-					image: null,
-					phoneNumber: patRow.user.phoneNumber,
-					phoneNumberVerified: null,
-					profileUrl: null,
-					websiteUrl: null,
-					address: null,
-					externalId: null,
-					preferredLanguage: null,
-					locale: null,
-					timezone: null,
-					loginShell: null,
-					gecos: null,
-					roleId: patRow.user.roleId,
-					createdAt: patRow.user.createdAt,
-					updatedAt: patRow.user.updatedAt,
-				},
+				user: toUserResult(patRow.user),
 			};
 		}
 

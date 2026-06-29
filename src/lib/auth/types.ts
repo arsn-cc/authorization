@@ -95,6 +95,10 @@ export interface UserResult {
 	loginShell: string | null;
 	gecos: string | null;
 	roleId: number | null;
+	totpSecret: string | null;
+	totpEnabled: boolean;
+	totpBackupCodes: string | null;
+	emailTwoFactorEnabled: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -104,6 +108,33 @@ export interface LoginResult {
 	token: string;
 	expires: Date;
 	sessionId: number;
+}
+
+export interface PendingLoginResult {
+	user: UserResult;
+	pendingAuthToken: string;
+	methods: string[];
+}
+
+export interface VerifyTotpInput {
+	pendingAuthToken: string;
+	totpCode: string;
+}
+
+export interface VerifyEmailTwoFactorInput {
+	token: string;
+}
+
+export interface VerifyEmailTwoFactorAndLoginInput {
+	pendingAuthToken: string;
+	emailCode: string;
+}
+
+export interface AccountTotpStatus {
+	enabled: boolean;
+	secret?: string;
+	uri?: string;
+	backupCodes?: string[];
 }
 
 export interface AuthenticatedSession {

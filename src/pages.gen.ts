@@ -12,7 +12,11 @@ import type { getConfig as File_ForgotPasswordIndex_getConfig } from './pages/fo
 // prettier-ignore
 import type { getConfig as File_Index_getConfig } from './pages/index';
 // prettier-ignore
+import type { getConfig as File_LoginE2faIndex_getConfig } from './pages/login/e-2fa/index';
+// prettier-ignore
 import type { getConfig as File_LoginIndex_getConfig } from './pages/login/index';
+// prettier-ignore
+import type { getConfig as File_LoginTotpIndex_getConfig } from './pages/login/totp/index';
 // prettier-ignore
 import type { getConfig as File_PasswordResetIndex_getConfig } from './pages/password-reset/index';
 // prettier-ignore
@@ -26,7 +30,9 @@ type Page =
 | ({ path: '/about' } & GetConfigResponse<typeof File_AboutIndex_getConfig>)
 | ({ path: '/forgot-password' } & GetConfigResponse<typeof File_ForgotPasswordIndex_getConfig>)
 | ({ path: '/' } & GetConfigResponse<typeof File_Index_getConfig>)
+| ({ path: '/login/e-2fa' } & GetConfigResponse<typeof File_LoginE2faIndex_getConfig>)
 | ({ path: '/login' } & GetConfigResponse<typeof File_LoginIndex_getConfig>)
+| ({ path: '/login/totp' } & GetConfigResponse<typeof File_LoginTotpIndex_getConfig>)
 | ({ path: '/password-reset' } & GetConfigResponse<typeof File_PasswordResetIndex_getConfig>)
 | ({ path: '/register' } & GetConfigResponse<typeof File_RegisterIndex_getConfig>)
 | ({ path: '/verify-email' } & GetConfigResponse<typeof File_VerifyEmailIndex_getConfig>);

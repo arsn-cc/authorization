@@ -5,13 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Field, FieldLegend } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { loginUser } from "@/lib/auth";
-import type { AuthResult, LoginResult } from "@/lib/auth/types";
+import type { AuthResult, LoginResult, PendingLoginResult } from "@/lib/auth/types";
 import { Link } from "waku";
 
 async function loginAction(
-	prevState: AuthResult<LoginResult> | null,
+	prevState: AuthResult<LoginResult | PendingLoginResult> | null,
 	formData: FormData,
-): Promise<AuthResult<LoginResult> | null> {
+): Promise<AuthResult<LoginResult | PendingLoginResult> | null> {
 	const login = formData.get("login") as string;
 	const password = formData.get("password") as string;
 	return loginUser({ login, password });
@@ -22,13 +22,36 @@ function setSessionCookie(token: string, expires: Date) {
 	document.cookie = `session_token=${encodeURIComponent(token)}; Path=/; Secure; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
+function getPendingRedirectUrl(data: LoginResult | PendingLoginResult): string | null {
+	if ("pendingAuthToken" in data && data.pendingAuthToken) {
+		const pending = data.pendingAuthToken;
+		const methods = data.methods ?? [];
+		// Prefer TOTP over email if both are required
+		if (methods.includes("totp")) {
+			return `/login/totp?p=${encodeURIComponent(pending)}`;
+		}
+		if (methods.includes("email")) {
+			return `/login/e-2fa?p=${encodeURIComponent(pending)}`;
+		}
+	}
+	return null;
+}
+
 export function LoginForm({ registrationDisabled }: { registrationDisabled?: boolean }) {
 	const [state, formAction, isPending] = useActionState(loginAction, null);
 
 	useEffect(() => {
 		if (state?.success === true) {
-			setSessionCookie(state.data.token, state.data.expires);
-			window.location.href = "https://arsn.cc";
+			const data = state.data;
+			const redirect = getPendingRedirectUrl(data);
+			if (redirect) {
+				window.location.href = redirect;
+				return;
+			}
+			if ("token" in data && data.token) {
+				setSessionCookie(data.token, data.expires);
+				window.location.href = "https://arsn.cc";
+			}
 		}
 	}, [state]);
 

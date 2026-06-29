@@ -50,6 +50,10 @@ export function toUserResult(u: typeof schema.user.$inferSelect): UserResult {
 		loginShell: u.loginShell,
 		gecos: u.gecos,
 		roleId: u.roleId,
+		totpSecret: u.totpSecret,
+		totpEnabled: Boolean(u.totpEnabled),
+		totpBackupCodes: u.totpBackupCodes,
+		emailTwoFactorEnabled: Boolean(u.emailTwoFactorEnabled),
 		createdAt: u.createdAt,
 		updatedAt: u.updatedAt,
 	};

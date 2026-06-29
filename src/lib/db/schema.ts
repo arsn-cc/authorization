@@ -59,6 +59,11 @@ const user = pgTable("user", {
 
 	timezone: text("timezone"),
 
+	totpSecret: text("totp_secret"),
+	totpEnabled: integer("totp_enabled").notNull().default(0),
+	totpBackupCodes: text("totp_backup_codes"),
+	emailTwoFactorEnabled: integer("email_two_factor_enabled").notNull().default(0),
+
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -95,6 +100,22 @@ const passwordResetToken = pgTable("password_reset_token", {
 		.references(() => user.id),
 	tokenHash: text("token_hash").notNull().unique(),
 	expires: timestamp("expires").notNull(),
+	usedAt: timestamp("used_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── Pending authentication ─────────────────────────────────────────
+// Created when a user logs in with valid credentials but 2FA is
+// required. `methods` is a JSON array like ["totp"] or ["email"].
+// The user must complete all methods to receive a session.
+const pendingAuthToken = pgTable("pending_auth_token", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	tokenHash: text("token_hash").notNull().unique(),
+	methods: text("methods").notNull(),
+	expiresAt: timestamp("expires_at").notNull(),
 	usedAt: timestamp("used_at"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -338,6 +359,7 @@ export const schema = {
 	user,
 	session,
 	passwordResetToken,
+	pendingAuthToken,
 	emailTwoFactorToken,
 	oauthAuthorizationCode,
 	oauthAccessToken,

@@ -2,6 +2,7 @@ import { and, eq, gte, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
+import { toUserResult } from "@/lib/auth/cache";
 import type { UserResult } from "@/lib/auth/types";
 
 interface AuthenticatedUser {
@@ -31,7 +32,7 @@ export async function getAccountUser(req: Request): Promise<AuthenticatedUser | 
 			return {
 				userId: row.user.id,
 				sessionToken: null,
-				user: row.user,
+				user: toUserResult(row.user),
 			};
 		}
 
@@ -45,7 +46,7 @@ export async function getAccountUser(req: Request): Promise<AuthenticatedUser | 
 			return {
 				userId: patRow.user.id,
 				sessionToken: null,
-				user: patRow.user,
+				user: toUserResult(patRow.user),
 			};
 		}
 

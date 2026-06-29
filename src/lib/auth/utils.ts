@@ -3,6 +3,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 export const SESSION_TTL_DAYS = 7;
 export const PASSWORD_RESET_TOKEN_TTL_MINUTES = 60;
 export const EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES = 10;
+export const PENDING_AUTH_TTL_MINUTES = 5;
 
 export function sessionKey(token: string) {
 	return `session:${token}`;

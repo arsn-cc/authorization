@@ -11,15 +11,18 @@ import type {
 	RequestPasswordResetInput,
 	ResetPasswordInput,
 	RequestEmailTwoFactorInput,
-	VerifyEmailTwoFactorInput,
+	VerifyTotpInput,
+	VerifyEmailTwoFactorAndLoginInput,
 	UserResult,
 	LoginResult,
+	PendingLoginResult,
 	AuthenticatedSession,
 	AuthResult,
 } from "./types";
 import {
 	EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES,
 	PASSWORD_RESET_TOKEN_TTL_MINUTES,
+	PENDING_AUTH_TTL_MINUTES,
 	SESSION_TTL_DAYS,
 	hashSecret,
 	sessionKey,
@@ -32,6 +35,7 @@ import {
 	usernameToEmail,
 	isValidUsername,
 } from "./utils";
+import { verifyTotpCode, consumeBackupCode } from "./totp";
 import {
 	toUserResult,
 	invalidateUser,
@@ -55,11 +59,14 @@ export type {
 	RequestPasswordResetInput,
 	ResetPasswordInput,
 	RequestEmailTwoFactorInput,
-	VerifyEmailTwoFactorInput,
+	VerifyTotpInput,
+	VerifyEmailTwoFactorAndLoginInput,
 	UserResult,
 	LoginResult,
+	PendingLoginResult,
 	AuthenticatedSession,
 	AuthResult,
+	AccountTotpStatus,
 } from "./types";
 
 function ok<T>(data: T): AuthResult<T> {
@@ -81,10 +88,11 @@ function passwordResetUrl(token: string): string {
 	return url.toString();
 }
 
-function twoFactorUrl(token: string): string {
-	const base = process.env.EMAIL_TWO_FACTOR_URL_BASE ?? "http://localhost:3000/verify-email";
+function twoFactorUrl(pendingToken: string, emailToken: string): string {
+	const base = process.env.EMAIL_TWO_FACTOR_URL_BASE ?? "http://localhost:3000/login/e-2fa";
 	const url = new URL(base);
-	url.searchParams.set("token", token);
+	url.searchParams.set("p", pendingToken);
+	url.searchParams.set("c", emailToken);
 	return url.toString();
 }
 
@@ -107,14 +115,14 @@ async function sendPasswordResetEmail(to: string, username: string | null, token
 	}
 }
 
-async function sendTwoFactorEmail(to: string, username: string | null, token: string) {
+async function sendTwoFactorEmail(to: string, username: string | null, pendingToken: string, emailToken: string) {
 	if (isPreview) {
 		return;
 	}
 
 	const html = await renderTwoFactor({
 		...(username ? { username } : {}),
-		verifyUrl: twoFactorUrl(token),
+		verifyUrl: twoFactorUrl(pendingToken, emailToken),
 	});
 	const emailResult = await sendEmail({
 		to,
@@ -291,72 +299,9 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 	return ok(true as const);
 }
 
-// ── Email two-factor links ─────────────────────────────────────────
-
-export async function requestEmailTwoFactorLink(input: RequestEmailTwoFactorInput): Promise<AuthResult<true>> {
-	if (!isValidEmail(input.email)) {
-		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
-	}
-
-	const user = await getUserByEmail(input.email);
-	if (!user || !user.emailVerified) {
-		return ok(true as const);
-	}
-
-	const db = await getDb();
-	const [dbUser] = await db
-		.select({ id: schema.user.id, email: schema.user.email, name: schema.user.name })
-		.from(schema.user)
-		.where(eq(schema.user.id, user.id));
-	if (!dbUser || !dbUser.email) {
-		return ok(true as const);
-	}
-
-	const token = generateToken();
-	await db.insert(schema.emailTwoFactorToken).values({
-		userId: dbUser.id,
-		tokenHash: hashSecret(token),
-		expires: inMinutes(EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES),
-	});
-
-	await sendTwoFactorEmail(dbUser.email, dbUser.name, token);
-
-	return ok(true as const);
-}
-
-export async function verifyEmailTwoFactorToken(input: VerifyEmailTwoFactorInput): Promise<AuthResult<true>> {
-	if (!input.token) {
-		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
-	}
-
-	const db = await getDb();
-	const tokenHash = hashSecret(input.token);
-	const [twoFactorToken] = await db
-		.select()
-		.from(schema.emailTwoFactorToken)
-		.where(and(eq(schema.emailTwoFactorToken.tokenHash, tokenHash), isNull(schema.emailTwoFactorToken.usedAt)))
-		.limit(1);
-
-	if (!twoFactorToken || twoFactorToken.expires <= new Date()) {
-		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
-	}
-
-	const user = await getUserById(twoFactorToken.userId);
-	if (!user || !user.emailVerified) {
-		return err(new AuthError("Invalid or expired verification link"), "INVALID_TOKEN");
-	}
-
-	await db
-		.update(schema.emailTwoFactorToken)
-		.set({ usedAt: new Date() })
-		.where(eq(schema.emailTwoFactorToken.id, twoFactorToken.id));
-
-	return ok(true as const);
-}
-
 // ── Login ───────────────────────────────────────────────────────────
 
-export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResult>> {
+export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResult | PendingLoginResult>> {
 	if (!input.login || !input.password) {
 		return err(new AuthError("Login and password are required"), "VALIDATION_ERROR");
 	}
@@ -372,6 +317,31 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 
 	if (!verifyPassword(input.password, user.passwordHash)) {
 		return err(new InvalidCredentialsError(), "INVALID_CREDENTIALS");
+	}
+
+	// Check if 2FA is required
+	const methods: string[] = [];
+	if (user.totpEnabled) {
+		methods.push("totp");
+	}
+	if (user.emailTwoFactorEnabled) {
+		methods.push("email");
+	}
+
+	if (methods.length > 0) {
+		const pendingToken = generateToken();
+		await db.insert(schema.pendingAuthToken).values({
+			userId: user.id,
+			tokenHash: hashSecret(pendingToken),
+			methods: JSON.stringify(methods),
+			expiresAt: inMinutes(PENDING_AUTH_TTL_MINUTES),
+		});
+
+		return ok({
+			user: toUserResult(user),
+			pendingAuthToken: pendingToken,
+			methods,
+		} satisfies PendingLoginResult);
 	}
 
 	const token = generateToken();
@@ -445,6 +415,197 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 			cache.set(userByEmailKey(user.email), userResult, CACHE_TTL_USER),
 		]);
 	}
+
+	return ok(result);
+}
+
+// ── TOTP verification ────────────────────────────────────────────────
+
+export async function verifyTotpAndLogin(input: VerifyTotpInput): Promise<AuthResult<LoginResult>> {
+	if (!input.pendingAuthToken || !input.totpCode) {
+		return err(new AuthError("Pending auth token and verification code are required"), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const tokenHash = hashSecret(input.pendingAuthToken);
+	const [pending] = await db
+		.select()
+		.from(schema.pendingAuthToken)
+		.where(and(eq(schema.pendingAuthToken.tokenHash, tokenHash), isNull(schema.pendingAuthToken.usedAt)))
+		.limit(1);
+
+	if (!pending || pending.expiresAt <= new Date()) {
+		return err(new AuthError("Invalid or expired authentication session"), "INVALID_TOKEN");
+	}
+
+	const methods: string[] = JSON.parse(pending.methods);
+	if (!methods.includes("totp")) {
+		return err(new AuthError("TOTP verification not required"), "INVALID_REQUEST");
+	}
+
+	const user = await getUserById(pending.userId);
+	if (!user) {
+		return err(new AuthError("User not found"), "NOT_FOUND");
+	}
+
+	const dbUser = await db
+		.select({
+			totpSecret: schema.user.totpSecret,
+			totpBackupCodes: schema.user.totpBackupCodes,
+			totpEnabled: schema.user.totpEnabled,
+		})
+		.from(schema.user)
+		.where(eq(schema.user.id, pending.userId))
+		.then((rows) => rows[0]);
+
+	if (!dbUser?.totpEnabled || !dbUser.totpSecret) {
+		return err(new AuthError("TOTP is not enabled"), "TOTP_DISABLED");
+	}
+
+	// Check TOTP code
+	if (verifyTotpCode(dbUser.totpSecret, input.totpCode)) {
+		await db
+			.update(schema.pendingAuthToken)
+			.set({ usedAt: new Date() })
+			.where(eq(schema.pendingAuthToken.id, pending.id));
+		return createSessionFromPending(db, pending.userId);
+	}
+
+	// Check backup codes
+	const remaining = consumeBackupCode(dbUser.totpBackupCodes, input.totpCode);
+	if (remaining !== null) {
+		await Promise.all([
+			db.update(schema.pendingAuthToken).set({ usedAt: new Date() }).where(eq(schema.pendingAuthToken.id, pending.id)),
+			db.update(schema.user).set({ totpBackupCodes: remaining }).where(eq(schema.user.id, pending.userId)),
+		]);
+		return createSessionFromPending(db, pending.userId);
+	}
+
+	return err(new AuthError("Invalid verification code"), "INVALID_CODE");
+}
+
+// ── Email two-factor verification (during login) ──────────────────────
+
+export async function requestEmailTwoFactorLink(
+	input: RequestEmailTwoFactorInput & { pendingAuthToken?: string },
+): Promise<AuthResult<true>> {
+	if (!isValidEmail(input.email)) {
+		return err(new AuthError("Valid email is required"), "VALIDATION_ERROR");
+	}
+
+	const user = await getUserByEmail(input.email);
+	if (!user || !user.emailVerified) {
+		return ok(true as const);
+	}
+
+	const db = await getDb();
+	const [dbUser] = await db
+		.select({ id: schema.user.id, email: schema.user.email, name: schema.user.name })
+		.from(schema.user)
+		.where(eq(schema.user.id, user.id));
+	if (!dbUser || !dbUser.email) {
+		return ok(true as const);
+	}
+
+	const token = generateToken();
+	await db.insert(schema.emailTwoFactorToken).values({
+		userId: dbUser.id,
+		tokenHash: hashSecret(token),
+		expires: inMinutes(EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES),
+	});
+
+	await sendTwoFactorEmail(dbUser.email, dbUser.name, input.pendingAuthToken ?? "", token);
+
+	return ok(true as const);
+}
+
+export async function verifyEmailTwoFactorAndLogin(
+	input: VerifyEmailTwoFactorAndLoginInput,
+): Promise<AuthResult<LoginResult>> {
+	if (!input.pendingAuthToken || !input.emailCode) {
+		return err(new AuthError("Pending auth token and verification code are required"), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const tokenHash = hashSecret(input.pendingAuthToken);
+	const [pending] = await db
+		.select()
+		.from(schema.pendingAuthToken)
+		.where(and(eq(schema.pendingAuthToken.tokenHash, tokenHash), isNull(schema.pendingAuthToken.usedAt)))
+		.limit(1);
+
+	if (!pending || pending.expiresAt <= new Date()) {
+		return err(new AuthError("Invalid or expired authentication session"), "INVALID_TOKEN");
+	}
+
+	const methods: string[] = JSON.parse(pending.methods);
+	if (!methods.includes("email")) {
+		return err(new AuthError("Email verification not required"), "INVALID_REQUEST");
+	}
+
+	const emailTokenHash = hashSecret(input.emailCode);
+	const [emailToken] = await db
+		.select()
+		.from(schema.emailTwoFactorToken)
+		.where(
+			and(
+				eq(schema.emailTwoFactorToken.tokenHash, emailTokenHash),
+				eq(schema.emailTwoFactorToken.userId, pending.userId),
+				isNull(schema.emailTwoFactorToken.usedAt),
+			),
+		)
+		.limit(1);
+
+	if (!emailToken || emailToken.expires <= new Date()) {
+		return err(new AuthError("Invalid or expired verification code"), "INVALID_TOKEN");
+	}
+
+	await Promise.all([
+		db.update(schema.pendingAuthToken).set({ usedAt: new Date() }).where(eq(schema.pendingAuthToken.id, pending.id)),
+		db
+			.update(schema.emailTwoFactorToken)
+			.set({ usedAt: new Date() })
+			.where(eq(schema.emailTwoFactorToken.id, emailToken.id)),
+	]);
+
+	return createSessionFromPending(db, pending.userId);
+}
+
+async function createSessionFromPending(
+	db: ReturnType<typeof getDb> extends Promise<infer T> ? T : never,
+	userId: number,
+): Promise<AuthResult<LoginResult>> {
+	const user = await getUserById(userId);
+	if (!user) {
+		return err(new AuthError("User not found"), "NOT_FOUND");
+	}
+
+	const token = generateToken();
+	const expires = inDays(SESSION_TTL_DAYS);
+
+	const [inserted] = await db
+		.insert(schema.session)
+		.values({
+			userId,
+			token,
+			expires,
+			usedAt: new Date(),
+		})
+		.returning();
+
+	if (!inserted) {
+		return err(new AuthError("Failed to create session"), "INTERNAL_ERROR");
+	}
+
+	const result: LoginResult = {
+		user,
+		token: inserted.token,
+		expires: inserted.expires,
+		sessionId: inserted.id,
+	};
+
+	const cache = await getCache();
+	await cache.set(sessionKey(token), result, sessionTtlSeconds(expires));
 
 	return ok(result);
 }
