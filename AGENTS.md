@@ -28,13 +28,25 @@ pnpm — do NOT use npm or yarn.
 | `pnpm typecheck`    | `tsc --noEmit`              |
 | `pnpm typegen`      | Waku router type generation |
 
-Always run `pnpm typecheck && pnpm lint && pnpm format:check` after making changes.
+Always run `pnpm typecheck && pnpm lint && pnpm format:check` after making changes. Commits are blocked if any linter warning or error exists.
 
 After any completed file change, commit the change without waiting for a separate commit request.
 
+## Commits
+
+Conventional Commits (https://www.conventionalcommits.org/):
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+```
+
+Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `style`, `test`, `perf`. Always use lowercase. No period at end of subject line. Wrap body at 72 chars.
+
 ## Linting & Formatting
 
-- **Linter:** `oxlint` + `oxlint-tsgolint` (type-aware). Key rules: `curly: error`, `eqeqeq: error`, `no-floating-promises: error`, `exhaustive-deps: warn`, `no-unused-vars: error` (prefix ignored with `_`)
+- **Linter:** `oxlint` + `oxlint-tsgolint` (type-aware). Key rules: `curly: error`, `eqeqeq: error`, `no-floating-promises: error`, `promise/always-return: error` (every `.then()` must end with `return;`), `exhaustive-deps: warn`, `no-unused-vars: error` (prefix ignored with `_`)
 - **Formatter:** `oxfmt` — tabs, 120 width, trailing commas, Tailwind class sorting
 - **Ignored:** `dist/`, `.cache/`, `.vercel/`, `pages.gen.ts`, `node_modules/`
 - **`oxlintrc` exceptions:** `no-explicit-any` off, `no-empty-object-type` off, `no-unsafe-type-assertion` off
