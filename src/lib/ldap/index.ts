@@ -46,24 +46,55 @@ export function groupDn(name: string, domain: string): string {
 }
 
 export function mapUserToLdapEntry(
-	user: { id: number; email: string; name: string | null; roleId: number | null },
+	user: {
+		id: number;
+		email: string;
+		name: string | null;
+		givenName: string | null;
+		familyName: string | null;
+		displayName: string | null;
+		nickname: string | null;
+		phoneNumber: string | null;
+		profileUrl: string | null;
+		loginShell: string | null;
+		roleId: number | null;
+	},
 	domain: string,
 ): SearchResultEntryAttribute[] {
 	const attrs: SearchResultEntryAttribute[] = [
 		{ type: "dn", vals: [userDn(user.email, domain)] },
 		{ type: "objectClass", vals: ["top", "person", "organizationalPerson", "inetOrgPerson"] },
 		{ type: "uid", vals: [user.email] },
-		{ type: "cn", vals: [user.name || user.email] },
-		{ type: "sn", vals: [user.name?.split(" ").pop() || user.email] },
+		{ type: "cn", vals: [user.displayName || user.name || user.email] },
+		{ type: "sn", vals: [user.familyName || user.name?.split(" ").pop() || user.email] },
 		{ type: "mail", vals: [user.email] },
 		{ type: "uidNumber", vals: [String(user.id)] },
 		{ type: "gidNumber", vals: [String(user.roleId || 500)] },
 		{ type: "homeDirectory", vals: [`/home/${user.email.split("@")[0]}`] },
 	];
 
-	if (user.name) {
-		attrs.push({ type: "displayName", vals: [user.name] });
+	if (user.givenName) {
+		attrs.push({ type: "givenName", vals: [user.givenName] });
+	} else if (user.name) {
 		attrs.push({ type: "givenName", vals: [user.name.split(" ")[0] || ""] });
+	}
+
+	if (user.displayName) {
+		attrs.push({ type: "displayName", vals: [user.displayName] });
+	} else if (user.name) {
+		attrs.push({ type: "displayName", vals: [user.name] });
+	}
+
+	if (user.nickname) {
+		attrs.push({ type: "nickname", vals: [user.nickname] });
+	}
+
+	if (user.phoneNumber) {
+		attrs.push({ type: "telephoneNumber", vals: [user.phoneNumber] });
+	}
+
+	if (user.loginShell) {
+		attrs.push({ type: "loginShell", vals: [user.loginShell] });
 	}
 
 	return attrs;
@@ -162,6 +193,13 @@ export async function searchUsers(domain: string): Promise<SearchResultEntryAttr
 			id: schema.user.id,
 			email: schema.user.email,
 			name: schema.user.name,
+			givenName: schema.user.givenName,
+			familyName: schema.user.familyName,
+			displayName: schema.user.displayName,
+			nickname: schema.user.nickname,
+			phoneNumber: schema.user.phoneNumber,
+			profileUrl: schema.user.profileUrl,
+			loginShell: schema.user.loginShell,
 			roleId: schema.user.roleId,
 		})
 		.from(schema.user);

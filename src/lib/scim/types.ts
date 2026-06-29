@@ -21,12 +21,29 @@ export interface ScimEmail {
 	primary?: boolean;
 }
 
+export interface ScimPhoneNumber {
+	value: string;
+	type?: string;
+}
+
+export interface ScimPhoto {
+	value: string;
+	type?: string;
+}
+
 export interface ScimUser {
 	id: string;
 	userName: string;
 	name?: ScimName;
 	displayName?: string;
+	nickname?: string;
 	emails?: ScimEmail[];
+	phoneNumbers?: ScimPhoneNumber[];
+	photos?: ScimPhoto[];
+	externalId?: string;
+	preferredLanguage?: string;
+	locale?: string;
+	timezone?: string;
 	active?: boolean;
 	meta: ScimMeta;
 	schemas: string[];

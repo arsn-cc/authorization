@@ -41,9 +41,15 @@ function userToScim(u: {
 	updatedAt: Date;
 }): ScimUser {
 	const name: ScimName = {};
-	if (u.name) { name.formatted = u.name; }
-	if (u.givenName) { name.givenName = u.givenName; }
-	if (u.familyName) { name.familyName = u.familyName; }
+	if (u.name) {
+		name.formatted = u.name;
+	}
+	if (u.givenName) {
+		name.givenName = u.givenName;
+	}
+	if (u.familyName) {
+		name.familyName = u.familyName;
+	}
 	return {
 		id: String(u.id),
 		userName: u.username,
@@ -212,9 +218,15 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 		values.email = input.userName.includes("@") ? input.userName : `${input.userName}@arsn.cc`;
 	}
 	if (input.name) {
-		if (input.name.formatted !== undefined) { values.name = input.name.formatted; }
-		if (input.name.givenName !== undefined) { values.givenName = input.name.givenName; }
-		if (input.name.familyName !== undefined) { values.familyName = input.name.familyName; }
+		if (input.name.formatted !== undefined) {
+			values.name = input.name.formatted;
+		}
+		if (input.name.givenName !== undefined) {
+			values.givenName = input.name.givenName;
+		}
+		if (input.name.familyName !== undefined) {
+			values.familyName = input.name.familyName;
+		}
 	}
 	if (input.displayName !== undefined) {
 		values.displayName = input.displayName;

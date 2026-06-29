@@ -98,19 +98,41 @@ export interface IdTokenClaims {
 	atHash?: string;
 	cHash?: string;
 	name?: string;
-	email?: string;
-	emailVerified?: boolean;
+	givenName?: string;
+	familyName?: string;
+	nickname?: string;
 	preferredUsername?: string;
 	picture?: string;
+	email?: string;
+	emailVerified?: boolean;
+	phoneNumber?: string;
+	phoneNumberVerified?: boolean;
+	profile?: string;
+	website?: string;
+	address?: Record<string, unknown>;
+	updatedAt?: number;
+	zoneinfo?: string;
+	locale?: string;
 }
 
 export interface UserInfoResponse {
 	sub: string;
 	name?: string;
-	email?: string;
-	emailVerified?: boolean;
+	givenName?: string;
+	familyName?: string;
+	nickname?: string;
 	preferredUsername?: string;
 	picture?: string;
+	email?: string;
+	emailVerified?: boolean;
+	phoneNumber?: string;
+	phoneNumberVerified?: boolean;
+	profile?: string;
+	website?: string;
+	address?: Record<string, unknown>;
+	updatedAt?: number;
+	zoneinfo?: string;
+	locale?: string;
 	[key: string]: unknown;
 }
 
