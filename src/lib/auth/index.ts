@@ -123,6 +123,7 @@ async function sendTwoFactorEmail(to: string, username: string | null, pendingTo
 	const html = await renderTwoFactor({
 		...(username ? { username } : {}),
 		verifyUrl: twoFactorUrl(pendingToken, emailToken),
+		code: emailToken,
 	});
 	const emailResult = await sendEmail({
 		to,
