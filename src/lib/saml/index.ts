@@ -1,5 +1,7 @@
-import { createHash, createSign, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { inflateRawSync, deflateRawSync } from "node:zlib";
+import { SignedXml } from "xml-crypto";
+import { DOMParser } from "@xmldom/xmldom";
 import type { SamlConfig, SamlMetadata, DecodedSamlRequest } from "./types";
 
 export type {
@@ -110,52 +112,34 @@ export function generateAssertion(
 		</saml2:Assertion>`;
 }
 
-export function generateSignature(
-	xml: string,
-	privateKey: string,
-): { signature: string; signatureAlgorithm: string; certificate?: string } {
-	const signer = createSign("RSA-SHA256");
-	signer.update(xml);
-	signer.end();
-	const signatureValue = signer.sign(privateKey, "base64");
-	const cert = getCertificate();
-
-	const result: { signature: string; signatureAlgorithm: string; certificate?: string } = {
-		signature: signatureValue,
-		signatureAlgorithm: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
-	};
-	if (cert) {
-		result.certificate = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----`;
-	}
-	return result;
-}
-
 export function signXml(xml: string, privateKey?: string): string {
 	const key = privateKey ?? getPrivateKey();
 	if (!key) {
 		return xml;
 	}
 
-	const sig = generateSignature(xml, key);
+	const cert = getCertificate();
+	const doc = new DOMParser().parseFromString(xml, "text/xml");
+	const assertion = doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:assertion", "Assertion")[0];
+	if (!assertion) {
+		return xml;
+	}
 
-	const signatureXml = `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
-	<ds:SignedInfo>
-		<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
-		<ds:SignatureMethod Algorithm="${escapeXml(sig.signatureAlgorithm)}" />
-		<ds:Reference URI="">
-			<ds:Transforms>
-				<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
-				<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
-			</ds:Transforms>
-			<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
-			<ds:DigestValue>${escapeXml(createHash("sha256").update(xml).digest("base64"))}</ds:DigestValue>
-		</ds:Reference>
-	</ds:SignedInfo>
-	<ds:SignatureValue>${escapeXml(sig.signature)}</ds:SignatureValue>
-	${sig.certificate ? `<ds:KeyInfo><ds:X509Data><ds:X509Certificate>${escapeXml(sig.certificate)}</ds:X509Certificate></ds:X509Data></ds:KeyInfo>` : ""}
-</ds:Signature>`;
+	const sig = new SignedXml();
+	sig.privateKey = key;
 
-	return xml.replace("</saml2:Assertion>", `${signatureXml}\n</saml2:Assertion>`);
+	if (cert) {
+		sig.publicCert = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----`;
+	}
+
+	sig.addReference({
+		xpath: `//*[local-name(.)='Assertion']`,
+		transforms: ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"],
+		digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256",
+	});
+
+	sig.computeSignature(xml);
+	return sig.getSignedXml();
 }
 
 export function generateSamlResponse(
