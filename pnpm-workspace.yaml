@@ -1,8 +1,7 @@
-allowBuilds:
-  better-sqlite3: true
-  esbuild: false
-  sharp: true
-  unrs-resolver: true
+onlyBuiltDependencies:
+  - esbuild
+  - better-sqlite3
+  - sharp
+  - unrs-resolver
 minimumReleaseAgeExclude:
   - lucide-react@1.22.0
-onlyBuiltDependencies: '["esbuild"]'
