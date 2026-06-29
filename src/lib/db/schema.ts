@@ -25,16 +25,40 @@ const role = pgTable("role", {
 });
 
 // ── User ──────────────────────────────────────────────────────────
-// End-user account. Passwords are hashed with scrypt (salt:hash).
-// `emailVerified` is set when the user confirms ownership.
+// End-user account. `username` is the login name; `email` is
+// auto-derived as `username@<domain>`. Passwords hashed with scrypt.
+// `emailVerified` is set when the user confirms identity.
 const user = pgTable("user", {
 	id: serial("id").primaryKey(),
-	name: text("name"),
+	username: text("username").notNull().unique(),
 	email: text("email").notNull().unique(),
 	emailVerified: timestamp("email_verified"),
 	passwordHash: text("password_hash"),
+
+	name: text("name"),
+	givenName: text("given_name"),
+	familyName: text("family_name"),
+	displayName: text("display_name"),
+	nickname: text("nickname"),
 	image: text("image"),
+
+	phoneNumber: text("phone_number"),
+	phoneNumberVerified: timestamp("phone_number_verified"),
+	profileUrl: text("profile_url"),
+	websiteUrl: text("website_url"),
+	address: text("address"),
+
+	externalId: text("external_id"),
+	preferredLanguage: text("preferred_language"),
+	locale: text("locale"),
+
+	loginShell: text("login_shell").default("/bin/bash"),
+	gecos: text("gecos"),
+
 	roleId: integer("role_id").references(() => role.id),
+
+	timezone: text("timezone"),
+
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
