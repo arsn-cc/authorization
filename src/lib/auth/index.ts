@@ -75,14 +75,14 @@ function isValidEmail(email: string): boolean {
 }
 
 function passwordResetUrl(token: string): string {
-	const base = process.env.PASSWORD_RESET_URL_BASE ?? "http://localhost:3000/reset-password";
+	const base = process.env.PASSWORD_RESET_URL_BASE ?? "http://localhost:3000/password-reset";
 	const url = new URL(base);
 	url.searchParams.set("token", token);
 	return url.toString();
 }
 
 function twoFactorUrl(token: string): string {
-	const base = process.env.EMAIL_TWO_FACTOR_URL_BASE ?? "http://localhost:3000/verify-sign-in";
+	const base = process.env.EMAIL_TWO_FACTOR_URL_BASE ?? "http://localhost:3000/verify-email";
 	const url = new URL(base);
 	url.searchParams.set("token", token);
 	return url.toString();
