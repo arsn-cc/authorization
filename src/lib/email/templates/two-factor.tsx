@@ -35,6 +35,12 @@ export default function TwoFactorEmail({
 				</Section>
 			)}
 			<Section className="mt-6">
+				<Text className="text-foreground mb-2 text-sm leading-relaxed">
+					If the button above doesn't work, copy and paste this link into your browser:
+				</Text>
+				<Text className="text-muted-foreground font-mono text-xs leading-relaxed break-all">{verifyUrl}</Text>
+			</Section>
+			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">
 					This code will expire in 10 minutes. If you did not attempt to sign in, please ignore this email.
 				</Text>
