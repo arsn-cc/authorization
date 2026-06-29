@@ -477,9 +477,23 @@ export async function getSession(token: string): Promise<AuthResult<Authenticate
 export async function logoutUser(token: string): Promise<AuthResult<true>> {
 	const db = await getDb();
 	const cache = await getCache();
+
+	const [session] = await db
+		.select({ id: schema.session.id })
+		.from(schema.session)
+		.where(eq(schema.session.token, token));
+
 	await Promise.all([
 		db.delete(schema.session).where(eq(schema.session.token, token)),
 		cache.delete(sessionKey(token)),
+		...(session
+			? [
+					db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.sessionId, session.id)),
+					db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.sessionId, session.id)),
+					db.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.sessionId, session.id)),
+				]
+			: []),
 	]);
+
 	return ok(true as const);
 }
