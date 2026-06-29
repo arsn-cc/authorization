@@ -4,12 +4,12 @@ import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import { usernameToEmail, hashPassword, isValidUsername } from "@/lib/auth";
 import { sessionKey } from "@/lib/auth/utils";
-import { getAdminUser, unauthorized } from "../auth";
+import { requirePermission, AdminPermission } from "../auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.UsersRead);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const db = await getDb();
@@ -51,9 +51,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.UsersWrite);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const body = (await req.json()) as Record<string, unknown>;
@@ -125,9 +125,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.UsersDelete);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const db = await getDb();

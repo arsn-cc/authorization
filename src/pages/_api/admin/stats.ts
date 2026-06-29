@@ -1,12 +1,12 @@
 import { count, gte } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getAdminUser, unauthorized } from "./auth";
+import { requirePermission, AdminPermission } from "./auth";
 
 export async function GET(req: Request): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.StatsRead);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const db = await getDb();

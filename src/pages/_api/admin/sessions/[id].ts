@@ -3,12 +3,12 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import { sessionKey } from "@/lib/auth/utils";
-import { getAdminUser, unauthorized } from "../auth";
+import { requirePermission, AdminPermission } from "../auth";
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.SessionsDelete);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const db = await getDb();

@@ -1,12 +1,12 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getAdminUser, unauthorized } from "../auth";
+import { requirePermission, AdminPermission } from "../auth";
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.TokensDelete);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const db = await getDb();

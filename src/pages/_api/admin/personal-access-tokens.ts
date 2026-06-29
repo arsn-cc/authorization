@@ -2,12 +2,12 @@ import { and, count, eq, desc, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getAdminUser, unauthorized } from "./auth";
+import { requirePermission, AdminPermission } from "./auth";
 
 export async function GET(req: Request): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.TokensRead);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const db = await getDb();
@@ -17,14 +17,17 @@ export async function GET(req: Request): Promise<Response> {
 	const userId = url.searchParams.get("userId");
 	const showRevoked = url.searchParams.get("showRevoked") === "true";
 
-	const conditions = showRevoked ? undefined : isNull(schema.personalAccessToken.revokedAt);
-	const userCondition = userId ? eq(schema.personalAccessToken.userId, Number(userId)) : undefined;
+	const conditions: ReturnType<typeof eq | typeof isNull>[] = [];
+	if (!showRevoked) {
+		conditions.push(isNull(schema.personalAccessToken.revokedAt));
+	}
+	if (userId) {
+		conditions.push(eq(schema.personalAccessToken.userId, Number(userId)));
+	}
 
-	const [totalResult] = await db
-		.select({ value: count() })
-		.from(schema.personalAccessToken)
-		.where(and(...[conditions, userCondition].filter(Boolean)));
+	const where = conditions.length > 0 ? and(...conditions) : undefined;
 
+	const [totalResult] = await db.select({ value: count() }).from(schema.personalAccessToken).where(where);
 	const total = totalResult?.value ?? 0;
 
 	const tokens = await db
@@ -40,7 +43,7 @@ export async function GET(req: Request): Promise<Response> {
 			createdAt: schema.personalAccessToken.createdAt,
 		})
 		.from(schema.personalAccessToken)
-		.where(and(...[conditions, userCondition].filter(Boolean)))
+		.where(where)
 		.leftJoin(schema.user, eq(schema.personalAccessToken.userId, schema.user.id))
 		.orderBy(desc(schema.personalAccessToken.createdAt))
 		.limit(perPage)
@@ -50,13 +53,13 @@ export async function GET(req: Request): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-	const admin = await getAdminUser(req);
-	if (!admin) {
-		return unauthorized();
+	const result = await requirePermission(req, AdminPermission.TokensWrite);
+	if (result instanceof Response) {
+		return result;
 	}
 
 	const body = (await req.json()) as Record<string, unknown>;
-	const userId = body.userId ? Number(body.userId) : admin.userId;
+	const userId = body.userId ? Number(body.userId) : result.userId;
 	const name = body.name as string;
 
 	if (!name || typeof name !== "string") {

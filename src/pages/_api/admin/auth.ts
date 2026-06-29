@@ -4,6 +4,28 @@ import { schema } from "@/lib/db/schema";
 import { getSession as getWebSession } from "@/lib/auth";
 import type { UserResult } from "@/lib/auth/types";
 
+export const AdminPermission = {
+	UsersRead: "admin:users:read",
+	UsersWrite: "admin:users:write",
+	UsersDelete: "admin:users:delete",
+	ClientsRead: "admin:clients:read",
+	ClientsWrite: "admin:clients:write",
+	ClientsDelete: "admin:clients:delete",
+	SessionsRead: "admin:sessions:read",
+	SessionsDelete: "admin:sessions:delete",
+	RolesRead: "admin:roles:read",
+	RolesWrite: "admin:roles:write",
+	RolesDelete: "admin:roles:delete",
+	PermissionsRead: "admin:permissions:read",
+	PermissionsWrite: "admin:permissions:write",
+	TokensRead: "admin:tokens:read",
+	TokensWrite: "admin:tokens:write",
+	TokensDelete: "admin:tokens:delete",
+	StatsRead: "admin:stats:read",
+} as const;
+
+export type AdminPermission = (typeof AdminPermission)[keyof typeof AdminPermission];
+
 interface AdminUser {
 	userId: number;
 	user: UserResult;
@@ -14,8 +36,7 @@ function parseCookie(cookie: string, name: string): string | null {
 	return match ? decodeURIComponent(match[1]!) : null;
 }
 
-export async function getAdminUser(req: Request): Promise<AdminUser | null> {
-	// 1) Try Authorization: Bearer <token>
+async function getAdminUser(req: Request): Promise<AdminUser | null> {
 	const auth = req.headers.get("authorization");
 	if (auth?.startsWith("Bearer ")) {
 		const token = auth.slice(7);
@@ -37,7 +58,6 @@ export async function getAdminUser(req: Request): Promise<AdminUser | null> {
 			};
 		}
 
-		// Also check PATs (long-lived tokens with no expiry in this context)
 		const [patRow] = await db
 			.select({
 				pat: schema.personalAccessToken,
@@ -88,7 +108,6 @@ export async function getAdminUser(req: Request): Promise<AdminUser | null> {
 		return null;
 	}
 
-	// 2) Fallback to session cookie
 	const cookie = req.headers.get("cookie") ?? "";
 	const sessionToken = parseCookie(cookie, "session_token");
 	if (!sessionToken) {
@@ -106,6 +125,45 @@ export async function getAdminUser(req: Request): Promise<AdminUser | null> {
 	};
 }
 
-export function unauthorized(): Response {
-	return Response.json({ error: "unauthorized" }, { status: 401 });
+/** Verify that the request is authenticated AND the user's role grants the required permission. */
+export async function requirePermission(req: Request, permission: AdminPermission): Promise<AdminUser | Response> {
+	const admin = await getAdminUser(req);
+	if (!admin) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
+	const db = await getDb();
+
+	if (admin.user.roleId === null) {
+		return Response.json({ error: "forbidden", message: "no role assigned" }, { status: 403 });
+	}
+
+	const [role] = await db
+		.select({ permissions: schema.role.permissions })
+		.from(schema.role)
+		.where(eq(schema.role.id, admin.user.roleId));
+
+	if (!role) {
+		return Response.json({ error: "forbidden", message: "role not found" }, { status: 403 });
+	}
+
+	let rolePermissions: string[];
+	try {
+		rolePermissions = JSON.parse(role.permissions) as string[];
+	} catch {
+		rolePermissions = [];
+	}
+
+	if (!rolePermissions.includes(permission)) {
+		return Response.json(
+			{
+				error: "forbidden",
+				message: `missing permission: ${permission}`,
+				required: permission,
+			},
+			{ status: 403 },
+		);
+	}
+
+	return admin;
 }
