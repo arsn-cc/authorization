@@ -1,23 +1,11 @@
 import { eq, and, isNull } from "drizzle-orm";
-import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
+import { schema } from "@/lib/db/schema";
 import type { CasLoginParams, CasTicketResult } from "./types";
 
 export type { CasTicket, CasServerConfig, CasLoginParams, CasValidateParams, CasTicketResult } from "./types";
 export { CasError, CasErrorCodes } from "./types";
-
-const casTicket = pgTable("cas_ticket", {
-	id: serial("id").primaryKey(),
-	ticket: text("ticket").notNull().unique(),
-	service: text("service").notNull(),
-	userId: integer("user_id").notNull(),
-	username: text("username").notNull(),
-	type: text("type").notNull().default("service"),
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-	expiresAt: timestamp("expires_at").notNull(),
-	usedAt: timestamp("used_at"),
-});
 
 function escapeXml(s: string): string {
 	return s
@@ -68,7 +56,7 @@ export async function generateServiceTicket(service: string, userId: number, use
 	const ttl = getTicketTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
-	await db.insert(casTicket).values({
+	await db.insert(schema.casTicket).values({
 		ticket,
 		service,
 		userId,
@@ -84,8 +72,10 @@ export async function validateServiceTicket(ticket: string, service: string): Pr
 	const db = await getDb();
 	const [row] = await db
 		.select()
-		.from(casTicket)
-		.where(and(eq(casTicket.ticket, ticket), eq(casTicket.service, service), isNull(casTicket.usedAt)));
+		.from(schema.casTicket)
+		.where(
+			and(eq(schema.casTicket.ticket, ticket), eq(schema.casTicket.service, service), isNull(schema.casTicket.usedAt)),
+		);
 
 	if (!row) {
 		return null;
@@ -95,7 +85,7 @@ export async function validateServiceTicket(ticket: string, service: string): Pr
 		return null;
 	}
 
-	await db.update(casTicket).set({ usedAt: new Date() }).where(eq(casTicket.id, row.id));
+	await db.update(schema.casTicket).set({ usedAt: new Date() }).where(eq(schema.casTicket.id, row.id));
 
 	return { userId: row.userId, username: row.username };
 }

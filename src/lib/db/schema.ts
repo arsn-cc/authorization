@@ -113,6 +113,64 @@ const emailTwoFactorToken = pgTable("email_two_factor_token", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── OAuth authorization code ──────────────────────────────────────
+// Short-lived code used in the OAuth authorization code flow.
+const oauthAuthorizationCode = pgTable("oauth_authorization_code", {
+	id: serial("id").primaryKey(),
+	code: text("code").notNull().unique(),
+	clientId: text("client_id").notNull(),
+	userId: integer("user_id").notNull(),
+	redirectUri: text("redirect_uri").notNull(),
+	scope: text("scope").notNull(),
+	codeChallenge: text("code_challenge"),
+	codeChallengeMethod: text("code_challenge_method"),
+	nonce: text("nonce"),
+	authTime: timestamp("auth_time").notNull(),
+	expiresAt: timestamp("expires_at").notNull(),
+	usedAt: timestamp("used_at"),
+});
+
+// ── OAuth access token ────────────────────────────────────────────
+// Opaque bearer token issued to OAuth clients.
+const oauthAccessToken = pgTable("oauth_access_token", {
+	id: serial("id").primaryKey(),
+	token: text("token").notNull().unique(),
+	clientId: text("client_id").notNull(),
+	userId: integer("user_id"),
+	scope: text("scope").notNull(),
+	expiresAt: timestamp("expires_at").notNull(),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── OAuth refresh token ───────────────────────────────────────────
+// Opaque token used to obtain new access tokens, with rotation support.
+const oauthRefreshToken = pgTable("oauth_refresh_token", {
+	id: serial("id").primaryKey(),
+	token: text("token").notNull().unique(),
+	clientId: text("client_id").notNull(),
+	userId: integer("user_id").notNull(),
+	scope: text("scope").notNull(),
+	expiresAt: timestamp("expires_at").notNull(),
+	usedAt: timestamp("used_at"),
+	rotatedFromToken: text("rotated_from_token"),
+});
+
+// ── CAS service ticket ────────────────────────────────────────────
+// Single-use ticket for the Central Authentication Service protocol.
+const casTicket = pgTable("cas_ticket", {
+	id: serial("id").primaryKey(),
+	ticket: text("ticket").notNull().unique(),
+	service: text("service").notNull(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	username: text("username").notNull(),
+	type: text("type").notNull().default("service"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	expiresAt: timestamp("expires_at").notNull(),
+	usedAt: timestamp("used_at"),
+});
+
 /** Session fields shown in login notification emails. */
 export const sessionDisplayFields = [
 	{ key: "ip", label: "IP address" },
@@ -241,4 +299,16 @@ const client = pgTable("client", {
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const schema = { user, session, passwordResetToken, emailTwoFactorToken, client, role, permission };
+export const schema = {
+	user,
+	session,
+	passwordResetToken,
+	emailTwoFactorToken,
+	oauthAuthorizationCode,
+	oauthAccessToken,
+	oauthRefreshToken,
+	casTicket,
+	client,
+	role,
+	permission,
+};

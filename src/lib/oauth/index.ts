@@ -1,5 +1,4 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { SignJWT, importPKCS8, importSPKI, exportJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { getDb } from "@/lib/db";
@@ -32,42 +31,6 @@ export type {
 	OAuthClient,
 	DiscoveryDocument,
 } from "./types";
-
-const authorizationCode = pgTable("oauth_authorization_code", {
-	id: serial("id").primaryKey(),
-	code: text("code").notNull().unique(),
-	clientId: text("client_id").notNull(),
-	userId: integer("user_id").notNull(),
-	redirectUri: text("redirect_uri").notNull(),
-	scope: text("scope").notNull(),
-	codeChallenge: text("code_challenge"),
-	codeChallengeMethod: text("code_challenge_method"),
-	nonce: text("nonce"),
-	authTime: timestamp("auth_time").notNull(),
-	expiresAt: timestamp("expires_at").notNull(),
-	usedAt: timestamp("used_at"),
-});
-
-const refreshToken = pgTable("oauth_refresh_token", {
-	id: serial("id").primaryKey(),
-	token: text("token").notNull().unique(),
-	clientId: text("client_id").notNull(),
-	userId: integer("user_id").notNull(),
-	scope: text("scope").notNull(),
-	expiresAt: timestamp("expires_at").notNull(),
-	usedAt: timestamp("used_at"),
-	rotatedFromToken: text("rotated_from_token"),
-});
-
-const accessToken = pgTable("oauth_access_token", {
-	id: serial("id").primaryKey(),
-	token: text("token").notNull().unique(),
-	clientId: text("client_id").notNull(),
-	userId: integer("user_id"),
-	scope: text("scope").notNull(),
-	expiresAt: timestamp("expires_at").notNull(),
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-});
 
 function getAccessTokenTtl(): number {
 	const env = process.env.OAUTH_ACCESS_TOKEN_TTL;
@@ -244,7 +207,7 @@ export async function generateAuthorizationCode(request: AuthorizationRequest, u
 	const ttl = getAuthorizationCodeTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
-	await db.insert(authorizationCode).values({
+	await db.insert(schema.oauthAuthorizationCode).values({
 		code,
 		clientId: request.clientId,
 		userId,
@@ -269,9 +232,13 @@ export async function validateAuthorizationCode(
 	const db = await getDb();
 	const [row] = await db
 		.select()
-		.from(authorizationCode)
+		.from(schema.oauthAuthorizationCode)
 		.where(
-			and(eq(authorizationCode.code, code), eq(authorizationCode.clientId, clientId), isNull(authorizationCode.usedAt)),
+			and(
+				eq(schema.oauthAuthorizationCode.code, code),
+				eq(schema.oauthAuthorizationCode.clientId, clientId),
+				isNull(schema.oauthAuthorizationCode.usedAt),
+			),
 		);
 
 	if (!row) {
@@ -294,7 +261,10 @@ export async function validateAuthorizationCode(
 		}
 	}
 
-	await db.update(authorizationCode).set({ usedAt: new Date() }).where(eq(authorizationCode.id, row.id));
+	await db
+		.update(schema.oauthAuthorizationCode)
+		.set({ usedAt: new Date() })
+		.where(eq(schema.oauthAuthorizationCode.id, row.id));
 
 	const result: { userId: number; scope: string; nonce?: string } = {
 		userId: row.userId,
@@ -341,7 +311,7 @@ export async function generateAccessToken(client: OAuthClient, userId?: number, 
 	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
-	await db.insert(accessToken).values({
+	await db.insert(schema.oauthAccessToken).values({
 		token,
 		clientId: client.clientId,
 		userId: userId ?? null,
@@ -358,7 +328,7 @@ export async function generateRefreshToken(clientId: string, userId: number, sco
 	const ttl = getRefreshTokenTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
-	await db.insert(refreshToken).values({
+	await db.insert(schema.oauthRefreshToken).values({
 		token,
 		clientId,
 		userId,
@@ -584,12 +554,12 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 	const db = await getDb();
 	const [row] = await db
 		.select()
-		.from(refreshToken)
+		.from(schema.oauthRefreshToken)
 		.where(
 			and(
-				eq(refreshToken.token, request.refreshToken),
-				eq(refreshToken.clientId, request.clientId),
-				isNull(refreshToken.usedAt),
+				eq(schema.oauthRefreshToken.token, request.refreshToken),
+				eq(schema.oauthRefreshToken.clientId, request.clientId),
+				isNull(schema.oauthRefreshToken.usedAt),
 			),
 		);
 
@@ -601,7 +571,7 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 		throw new Error("invalid_grant");
 	}
 
-	await db.update(refreshToken).set({ usedAt: new Date() }).where(eq(refreshToken.id, row.id));
+	await db.update(schema.oauthRefreshToken).set({ usedAt: new Date() }).where(eq(schema.oauthRefreshToken.id, row.id));
 
 	const rotationEnabled = client.refreshTokenRotationEnabled ?? true;
 	const reuseEnabled = client.reuseRefreshTokens ?? false;
@@ -640,8 +610,10 @@ export async function getUserInfo(accessTokenValue: string, client: OAuthClient)
 	const db = await getDb();
 	const [row] = await db
 		.select()
-		.from(accessToken)
-		.where(and(eq(accessToken.token, accessTokenValue), eq(accessToken.clientId, client.clientId)));
+		.from(schema.oauthAccessToken)
+		.where(
+			and(eq(schema.oauthAccessToken.token, accessTokenValue), eq(schema.oauthAccessToken.clientId, client.clientId)),
+		);
 
 	if (!row) {
 		return null;
@@ -793,14 +765,14 @@ export async function getDiscoveryDocument(issuer: string): Promise<DiscoveryDoc
 export async function getTokenIntrospection(token: string, clientId?: string): Promise<object> {
 	const db = await getDb();
 
-	const conditions = [eq(accessToken.token, token)];
+	const conditions = [eq(schema.oauthAccessToken.token, token)];
 	if (clientId) {
-		conditions.push(eq(accessToken.clientId, clientId));
+		conditions.push(eq(schema.oauthAccessToken.clientId, clientId));
 	}
 
 	const [row] = await db
 		.select()
-		.from(accessToken)
+		.from(schema.oauthAccessToken)
 		.where(and(...conditions));
 
 	if (!row) {
