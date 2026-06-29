@@ -54,6 +54,12 @@ export function LoginForm({ registrationDisabled }: { registrationDisabled?: boo
 				<Button type="submit" className="w-full" disabled={isPending}>
 					{isPending ? "Logging in..." : "Log in"}
 				</Button>
+
+				<p className="text-center text-sm">
+					<Link to="/forgot-password" className="text-muted-foreground underline underline-offset-4">
+						Forgot password?
+					</Link>
+				</p>
 			</form>
 
 			{!registrationDisabled && (
