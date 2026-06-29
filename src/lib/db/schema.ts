@@ -115,11 +115,14 @@ const emailTwoFactorToken = pgTable("email_two_factor_token", {
 
 // ── OAuth authorization code ──────────────────────────────────────
 // Short-lived code used in the OAuth authorization code flow.
+// `sessionId` links the code to the web session that authorized it,
+// enabling bulk revocation on session logout.
 const oauthAuthorizationCode = pgTable("oauth_authorization_code", {
 	id: serial("id").primaryKey(),
 	code: text("code").notNull().unique(),
 	clientId: text("client_id").notNull(),
 	userId: integer("user_id").notNull(),
+	sessionId: integer("session_id").references(() => session.id),
 	redirectUri: text("redirect_uri").notNull(),
 	scope: text("scope").notNull(),
 	codeChallenge: text("code_challenge"),
@@ -132,11 +135,13 @@ const oauthAuthorizationCode = pgTable("oauth_authorization_code", {
 
 // ── OAuth access token ────────────────────────────────────────────
 // Opaque bearer token issued to OAuth clients.
+// `sessionId` links back to the web session that authorized the grant.
 const oauthAccessToken = pgTable("oauth_access_token", {
 	id: serial("id").primaryKey(),
 	token: text("token").notNull().unique(),
 	clientId: text("client_id").notNull(),
 	userId: integer("user_id"),
+	sessionId: integer("session_id").references(() => session.id),
 	scope: text("scope").notNull(),
 	expiresAt: timestamp("expires_at").notNull(),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -144,11 +149,13 @@ const oauthAccessToken = pgTable("oauth_access_token", {
 
 // ── OAuth refresh token ───────────────────────────────────────────
 // Opaque token used to obtain new access tokens, with rotation support.
+// `sessionId` links back to the web session that authorized the grant.
 const oauthRefreshToken = pgTable("oauth_refresh_token", {
 	id: serial("id").primaryKey(),
 	token: text("token").notNull().unique(),
 	clientId: text("client_id").notNull(),
 	userId: integer("user_id").notNull(),
+	sessionId: integer("session_id").references(() => session.id),
 	scope: text("scope").notNull(),
 	expiresAt: timestamp("expires_at").notNull(),
 	usedAt: timestamp("used_at"),

@@ -201,7 +201,11 @@ async function validatePkceChallenge(
 	return false;
 }
 
-export async function generateAuthorizationCode(request: AuthorizationRequest, userId: number): Promise<string> {
+export async function generateAuthorizationCode(
+	request: AuthorizationRequest,
+	userId: number,
+	sessionId?: number,
+): Promise<string> {
 	const db = await getDb();
 	const code = generateTokenValue();
 	const ttl = getAuthorizationCodeTtl();
@@ -211,6 +215,7 @@ export async function generateAuthorizationCode(request: AuthorizationRequest, u
 		code,
 		clientId: request.clientId,
 		userId,
+		sessionId: sessionId ?? null,
 		redirectUri: request.redirectUri,
 		scope: request.scope,
 		codeChallenge: request.codeChallenge ?? null,
@@ -228,7 +233,7 @@ export async function validateAuthorizationCode(
 	clientId: string,
 	redirectUri: string,
 	codeVerifier?: string,
-): Promise<{ userId: number; scope: string; nonce?: string } | null> {
+): Promise<{ userId: number; scope: string; nonce?: string; sessionId?: number } | null> {
 	const db = await getDb();
 	const [row] = await db
 		.select()
@@ -266,12 +271,15 @@ export async function validateAuthorizationCode(
 		.set({ usedAt: new Date() })
 		.where(eq(schema.oauthAuthorizationCode.id, row.id));
 
-	const result: { userId: number; scope: string; nonce?: string } = {
+	const result: { userId: number; scope: string; nonce?: string; sessionId?: number } = {
 		userId: row.userId,
 		scope: row.scope,
 	};
 	if (row.nonce) {
 		result.nonce = row.nonce;
+	}
+	if (row.sessionId) {
+		result.sessionId = row.sessionId;
 	}
 	return result;
 }
@@ -305,7 +313,12 @@ export async function validateTokenRequest(
 	throw new Error("unsupported_grant_type");
 }
 
-export async function generateAccessToken(client: OAuthClient, userId?: number, scope?: string): Promise<string> {
+export async function generateAccessToken(
+	client: OAuthClient,
+	userId?: number,
+	scope?: string,
+	sessionId?: number,
+): Promise<string> {
 	const db = await getDb();
 	const token = generateTokenValue();
 	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();
@@ -315,6 +328,7 @@ export async function generateAccessToken(client: OAuthClient, userId?: number, 
 		token,
 		clientId: client.clientId,
 		userId: userId ?? null,
+		sessionId: sessionId ?? null,
 		scope: scope ?? client.scopes,
 		expiresAt,
 	});
@@ -322,7 +336,12 @@ export async function generateAccessToken(client: OAuthClient, userId?: number, 
 	return token;
 }
 
-export async function generateRefreshToken(clientId: string, userId: number, scope: string): Promise<string> {
+export async function generateRefreshToken(
+	clientId: string,
+	userId: number,
+	scope: string,
+	sessionId?: number,
+): Promise<string> {
 	const db = await getDb();
 	const token = generateTokenValue();
 	const ttl = getRefreshTokenTtl();
@@ -332,6 +351,7 @@ export async function generateRefreshToken(clientId: string, userId: number, sco
 		token,
 		clientId,
 		userId,
+		sessionId: sessionId ?? null,
 		scope,
 		expiresAt,
 	});
@@ -487,7 +507,8 @@ export async function exchangeAuthorizationCode(request: TokenRequest): Promise<
 		throw new Error("invalid_grant");
 	}
 
-	const accessTokenValue = await generateAccessToken(client, result.userId, result.scope);
+	const sessionId = result.sessionId;
+	const accessTokenValue = await generateAccessToken(client, result.userId, result.scope, sessionId);
 	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();
 
 	const response: TokenResponse = {
@@ -499,7 +520,7 @@ export async function exchangeAuthorizationCode(request: TokenRequest): Promise<
 
 	const shouldIssueRefresh = client.grants?.includes("refresh_token");
 	if (shouldIssueRefresh) {
-		response.refreshToken = await generateRefreshToken(client.clientId, result.userId, result.scope);
+		response.refreshToken = await generateRefreshToken(client.clientId, result.userId, result.scope, sessionId);
 	}
 
 	const isOidc = result.scope.split(" ").includes("openid");
@@ -580,7 +601,8 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 		throw new Error("invalid_grant");
 	}
 
-	const accessTokenValue = await generateAccessToken(client, row.userId, row.scope);
+	const sessionId = row.sessionId ?? undefined;
+	const accessTokenValue = await generateAccessToken(client, row.userId, row.scope, sessionId);
 	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();
 
 	const response: TokenResponse = {
@@ -591,7 +613,7 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 	};
 
 	if (rotationEnabled) {
-		const newRefreshTokenValue = await generateRefreshToken(client.clientId, row.userId, row.scope);
+		const newRefreshTokenValue = await generateRefreshToken(client.clientId, row.userId, row.scope, sessionId);
 		response.refreshToken = newRefreshTokenValue;
 	} else if (reuseEnabled) {
 		response.refreshToken = request.refreshToken;
