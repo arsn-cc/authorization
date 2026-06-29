@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
-import { randomBytes, createHmac, createHash, timingSafeEqual } from "node:crypto";
+import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { SignJWT, importPKCS8, importSPKI, exportJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import type {
@@ -116,17 +117,6 @@ function generateTokenValue(): string {
 	return randomBytes(32).toString("hex");
 }
 
-function base64url(buf: Buffer): string {
-	return buf.toString("base64url");
-}
-
-function createJwt(header: object, payload: object, secret: string): string {
-	const h = base64url(Buffer.from(JSON.stringify(header)));
-	const p = base64url(Buffer.from(JSON.stringify(payload)));
-	const signature = createHmac("sha256", secret).update(`${h}.${p}`).digest("base64url");
-	return `${h}.${p}.${signature}`;
-}
-
 function safeCompare(a: string, b: string): boolean {
 	const bufA = Buffer.from(a);
 	const bufB = Buffer.from(b);
@@ -134,6 +124,24 @@ function safeCompare(a: string, b: string): boolean {
 		return false;
 	}
 	return timingSafeEqual(bufA, bufB);
+}
+
+let _keyPair: { publicKey: JWK; privateKey: CryptoKey; kid: string } | null = null;
+
+async function getKeyPair() {
+	if (_keyPair) {
+		return _keyPair;
+	}
+	const privateKeyPem = process.env.OAUTH_PRIVATE_KEY;
+	const publicKeyPem = process.env.OAUTH_PUBLIC_KEY;
+	if (privateKeyPem && publicKeyPem) {
+		const privateKey = await importPKCS8(privateKeyPem, "RS256");
+		const publicKey = await importSPKI(publicKeyPem, "RS256");
+		const jwk = await exportJWK(publicKey);
+		const kid = await calculateJwkThumbprint(jwk);
+		_keyPair = { publicKey: jwk, privateKey, kid };
+	}
+	return _keyPair;
 }
 
 export async function getClientById(clientId: string): Promise<OAuthClient | null> {
@@ -374,7 +382,6 @@ export async function generateIdToken(
 	const issuer = process.env.OAUTH_ISSUER ?? "http://localhost:3000";
 
 	const sub = String(userId);
-	const header = { alg: "HS256", typ: "JWT", kid: client.clientId };
 
 	let atHash: string | undefined;
 	let cHash: string | undefined;
@@ -413,12 +420,26 @@ export async function generateIdToken(
 		payload.cHash = cHash;
 	}
 
-	const secret = client.clientSecret;
-	if (!secret) {
-		throw new Error("Client secret required for id_token signing");
+	const keyPair = await getKeyPair();
+	const clientAlg = client.idTokenSignedResponseAlg;
+	const useRs256 = clientAlg === "RS256" || (!clientAlg && keyPair);
+
+	if (useRs256) {
+		if (!keyPair) {
+			throw new Error("RSA keys not configured for RS256 id_token signing");
+		}
+		return await new SignJWT(payload)
+			.setProtectedHeader({ alg: "RS256", kid: keyPair.kid, typ: "JWT" })
+			.sign(keyPair.privateKey);
 	}
 
-	return createJwt(header, payload, secret);
+	const secret = client.clientSecret;
+	if (!secret) {
+		throw new Error("Client secret required for HS256 id_token signing");
+	}
+	return await new SignJWT(payload)
+		.setProtectedHeader({ alg: "HS256", typ: "JWT" })
+		.sign(new TextEncoder().encode(secret));
 }
 
 export async function exchangeAuthorizationCode(request: TokenRequest): Promise<TokenResponse> {
@@ -455,18 +476,14 @@ export async function exchangeAuthorizationCode(request: TokenRequest): Promise<
 
 	const isOidc = result.scope.split(" ").includes("openid");
 	if (isOidc) {
-		const secret = client.clientSecret;
-		const key = client.idTokenSignedResponseAlg ?? "HS256";
-		if (secret && key === "HS256") {
-			response.idToken = await generateIdToken(
-				client,
-				result.userId,
-				result.nonce,
-				undefined,
-				accessTokenValue,
-				request.code,
-			);
-		}
+		response.idToken = await generateIdToken(
+			client,
+			result.userId,
+			result.nonce,
+			undefined,
+			accessTokenValue,
+			request.code,
+		);
 	}
 
 	return response;
@@ -554,6 +571,12 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 	return response;
 }
 
+export async function getUserById(userId: number) {
+	const db = await getDb();
+	const [user] = await db.select().from(schema.user).where(eq(schema.user.id, userId));
+	return user ?? null;
+}
+
 export async function getUserInfo(accessTokenValue: string, client: OAuthClient): Promise<UserInfoResponse | null> {
 	const db = await getDb();
 	const [row] = await db
@@ -569,8 +592,8 @@ export async function getUserInfo(accessTokenValue: string, client: OAuthClient)
 		return null;
 	}
 
-	const isOidc = row.scope.split(" ").includes("openid");
-	if (!isOidc) {
+	const scopes = row.scope.split(" ");
+	if (!scopes.includes("openid")) {
 		return null;
 	}
 
@@ -578,35 +601,42 @@ export async function getUserInfo(accessTokenValue: string, client: OAuthClient)
 		sub: String(row.userId),
 	};
 
-	if (row.scope.split(" ").includes("profile") && row.userId) {
-		const [user] = await db.select().from(schema.user).where(eq(schema.user.id, row.userId));
+	if (row.userId) {
+		const user = await getUserById(row.userId);
 		if (user) {
-			if (user.name) {
-				result.name = user.name;
-				result.preferredUsername = user.name;
+			if (scopes.includes("profile")) {
+				if (user.name) {
+					result.name = user.name;
+					result.preferredUsername = user.name;
+				}
+				if (user.image) {
+					result.picture = user.image;
+				}
 			}
-			if (user.image) {
-				result.picture = user.image;
-			}
-		}
-	}
 
-	if (row.scope.split(" ").includes("email") && row.userId) {
-		const [user] = await db.select().from(schema.user).where(eq(schema.user.id, row.userId));
-		if (user) {
-			result.email = user.email;
-			result.emailVerified = !!user.emailVerified;
+			if (scopes.includes("email")) {
+				result.email = user.email;
+				result.emailVerified = !!user.emailVerified;
+			}
 		}
 	}
 
 	return result;
 }
 
-export function getJwks(_client?: OAuthClient): object {
+export async function getJwks(_client?: OAuthClient): Promise<{ keys: JWK[] }> {
+	const keyPair = await getKeyPair();
+	if (keyPair) {
+		return { keys: [{ ...keyPair.publicKey, kid: keyPair.kid, use: "sig", alg: "RS256" }] };
+	}
 	return { keys: [] };
 }
 
-export function getDiscoveryDocument(issuer: string): DiscoveryDocument {
+export async function getDiscoveryDocument(issuer: string): Promise<DiscoveryDocument> {
+	const keyPair = await getKeyPair();
+	const hasRsa = !!keyPair;
+	const signingAlgs = hasRsa ? ["RS256", "HS256"] : ["HS256"];
+
 	return {
 		issuer,
 		authorizationEndpoint: `${issuer}/oauth/authorize`,
@@ -631,9 +661,9 @@ export function getDiscoveryDocument(issuer: string): DiscoveryDocument {
 			"urn:ietf:params:oauth:grant-type:token-exchange",
 		],
 		tokenEndpointAuthMethodsSupported: ["client_secret_basic", "client_secret_post", "none"],
-		tokenEndpointAuthSigningAlgValuesSupported: ["HS256"],
-		subjectTypesSupported: ["public"],
-		idTokenSigningAlgValuesSupported: ["HS256"],
+		tokenEndpointAuthSigningAlgValuesSupported: signingAlgs,
+		subjectTypesSupported: hasRsa ? ["public", "pairwise"] : ["public"],
+		idTokenSigningAlgValuesSupported: signingAlgs,
 		claimsSupported: [
 			"sub",
 			"iss",
