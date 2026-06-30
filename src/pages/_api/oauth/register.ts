@@ -1,3 +1,6 @@
+import { getDb } from "@/lib/db";
+import { schema } from "@/lib/db/schema";
+
 export async function POST(req: Request): Promise<Response> {
 	const body = (await req.json()) as Record<string, unknown>;
 
@@ -11,15 +14,38 @@ export async function POST(req: Request): Promise<Response> {
 		return Response.json({ error: "invalid_client_metadata" }, { status: 400 });
 	}
 
+	const db = await getDb();
+	const id = clientId ?? crypto.randomUUID();
+	const secret = crypto.randomUUID();
+
+	const [inserted] = await db
+		.insert(schema.client)
+		.values({
+			clientId: id,
+			type: "oauth",
+			clientSecret: secret,
+			name: clientName,
+			redirectUris: redirectUris.join(","),
+			grants: (grantTypes ?? ["authorization_code"]).join(","),
+			scopes: "openid profile email",
+			tokenEndpointAuthMethod: tokenEndpointAuthMethod ?? "client_secret_basic",
+			clientIdIssuedAt: new Date(),
+		})
+		.returning();
+
+	if (!inserted) {
+		return Response.json({ error: "server_error" }, { status: 500 });
+	}
+
 	return Response.json(
 		{
-			client_id: clientId ?? crypto.randomUUID(),
-			client_secret: crypto.randomUUID(),
-			client_name: clientName,
-			redirect_uris: redirectUris,
-			grant_types: grantTypes ?? ["authorization_code"],
-			token_endpoint_auth_method: tokenEndpointAuthMethod ?? "client_secret_basic",
-			client_id_issued_at: Math.floor(Date.now() / 1000),
+			client_id: inserted.clientId,
+			client_secret: secret,
+			client_name: inserted.name,
+			redirect_uris: inserted.redirectUris?.split(",") ?? [],
+			grant_types: inserted.grants?.split(",") ?? ["authorization_code"],
+			token_endpoint_auth_method: inserted.tokenEndpointAuthMethod ?? "client_secret_basic",
+			client_id_issued_at: Math.floor((inserted.clientIdIssuedAt ?? new Date()).getTime() / 1000),
 			client_secret_expires_at: 0,
 		},
 		{ status: 201 },
