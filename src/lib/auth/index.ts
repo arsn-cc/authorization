@@ -342,9 +342,26 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 		return err(new InvalidCredentialsError(), "INVALID_CREDENTIALS");
 	}
 
+	// Check account lockout
+	if (user.lockedUntil && user.lockedUntil > new Date()) {
+		const remaining = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000 / 60);
+		return err(new AuthError(`Account temporarily locked. Try again in ${remaining} minute(s).`), "ACCOUNT_LOCKED");
+	}
+
 	if (!verifyPassword(input.password, user.passwordHash)) {
+		const attempts = (user.failedLoginAttempts ?? 0) + 1;
+		await db
+			.update(schema.user)
+			.set({
+				failedLoginAttempts: attempts,
+				...(attempts >= 5 ? { lockedUntil: inMinutes(15) } : {}),
+			})
+			.where(eq(schema.user.id, user.id));
 		return err(new InvalidCredentialsError(), "INVALID_CREDENTIALS");
 	}
+
+	// Reset failed attempts on successful password verification
+	await db.update(schema.user).set({ failedLoginAttempts: 0, lockedUntil: null }).where(eq(schema.user.id, user.id));
 
 	// Check if 2FA is required
 	const methods: string[] = [];

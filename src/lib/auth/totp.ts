@@ -28,7 +28,7 @@ export function verifyTotpCode(secret: string, token: string): boolean {
 export function generateBackupCodes(count = 8): string[] {
 	const codes: string[] = [];
 	for (let i = 0; i < count; i++) {
-		codes.push(randomBytes(5).toString("hex").slice(0, 10));
+		codes.push(randomBytes(8).toString("hex").slice(0, 16));
 	}
 	return codes;
 }

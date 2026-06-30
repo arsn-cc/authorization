@@ -64,6 +64,9 @@ const user = pgTable("user", {
 	totpBackupCodes: text("totp_backup_codes"),
 	emailTwoFactorEnabled: integer("email_two_factor_enabled").notNull().default(0),
 
+	failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+	lockedUntil: timestamp("locked_until"),
+
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
