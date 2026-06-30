@@ -1,6 +1,12 @@
 import { authenticateUser, RADIUS_CODE, type RadiusConfig } from "@/lib/radius";
+import { getAccountUser } from "@/pages/_api/account/auth";
 
 export async function POST(req: Request): Promise<Response> {
+	const authed = await getAccountUser(req);
+	if (!authed) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
 	const body = (await req.json()) as {
 		username?: string;
 		password?: string;
@@ -14,7 +20,7 @@ export async function POST(req: Request): Promise<Response> {
 	}
 
 	const config: RadiusConfig = {
-		secret: body.secret ?? process.env.RADIUS_SECRET ?? "testing123",
+		secret: body.secret ?? process.env.RADIUS_SECRET ?? "",
 		authPort: Number(process.env.RADIUS_AUTH_PORT) || 1812,
 		acctPort: Number(process.env.RADIUS_ACCT_PORT) || 1813,
 	};

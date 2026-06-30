@@ -1,7 +1,13 @@
 import { searchUsers, searchGroups, getDefaultServerConfig } from "@/lib/ldap";
+import { getAccountUser } from "@/pages/_api/account/auth";
 
-export async function POST(_req: Request): Promise<Response> {
-	const body = (await _req.json()) as Record<string, unknown>;
+export async function POST(req: Request): Promise<Response> {
+	const authed = await getAccountUser(req);
+	if (!authed) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
+	const body = (await req.json()) as Record<string, unknown>;
 	const baseDn = (body.base_dn as string) ?? "";
 	const filter = (body.filter as string) ?? "";
 
