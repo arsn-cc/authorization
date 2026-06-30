@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession as getWebSession } from "@/lib/auth";
 import { getRoleById, toUserResult } from "@/lib/auth/cache";
+import { hashToken } from "@/lib/auth/utils";
 import type { UserResult } from "@/lib/auth/types";
 
 export const AdminPermission = {
@@ -51,7 +52,12 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 				user: schema.user,
 			})
 			.from(schema.oauthAccessToken)
-			.where(and(eq(schema.oauthAccessToken.token, token), gte(schema.oauthAccessToken.expiresAt, new Date())))
+			.where(
+				and(
+					eq(schema.oauthAccessToken.tokenHash, hashToken(token)),
+					gte(schema.oauthAccessToken.expiresAt, new Date()),
+				),
+			)
 			.innerJoin(schema.user, eq(schema.oauthAccessToken.userId, schema.user.id));
 
 		if (row) {
@@ -67,7 +73,9 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 				user: schema.user,
 			})
 			.from(schema.personalAccessToken)
-			.where(and(eq(schema.personalAccessToken.token, token), isNull(schema.personalAccessToken.revokedAt)))
+			.where(
+				and(eq(schema.personalAccessToken.tokenHash, hashToken(token)), isNull(schema.personalAccessToken.revokedAt)),
+			)
 			.innerJoin(schema.user, eq(schema.personalAccessToken.userId, schema.user.id));
 
 		if (patRow) {

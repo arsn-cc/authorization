@@ -77,6 +77,7 @@ const session = pgTable("session", {
 		.notNull()
 		.references(() => user.id),
 	token: text("token").notNull().unique(),
+	tokenHash: text("token_hash"),
 	expires: timestamp("expires").notNull(),
 	usedAt: timestamp("used_at"),
 	userAgent: text("user_agent"),
@@ -160,6 +161,7 @@ const oauthAuthorizationCode = pgTable("oauth_authorization_code", {
 const oauthAccessToken = pgTable("oauth_access_token", {
 	id: serial("id").primaryKey(),
 	token: text("token").notNull().unique(),
+	tokenHash: text("token_hash"),
 	clientId: text("client_id").notNull(),
 	userId: integer("user_id"),
 	sessionId: integer("session_id").references(() => session.id),
@@ -174,6 +176,7 @@ const oauthAccessToken = pgTable("oauth_access_token", {
 const oauthRefreshToken = pgTable("oauth_refresh_token", {
 	id: serial("id").primaryKey(),
 	token: text("token").notNull().unique(),
+	tokenHash: text("token_hash"),
 	clientId: text("client_id").notNull(),
 	userId: integer("user_id").notNull(),
 	sessionId: integer("session_id").references(() => session.id),
@@ -188,6 +191,7 @@ const oauthRefreshToken = pgTable("oauth_refresh_token", {
 const casTicket = pgTable("cas_ticket", {
 	id: serial("id").primaryKey(),
 	ticket: text("ticket").notNull().unique(),
+	tokenHash: text("token_hash"),
 	service: text("service").notNull(),
 	userId: integer("user_id")
 		.notNull()
@@ -209,6 +213,7 @@ const personalAccessToken = pgTable("personal_access_token", {
 		.notNull()
 		.references(() => user.id),
 	token: text("token").notNull().unique(),
+	tokenHash: text("token_hash"),
 	name: text("name").notNull(),
 	scopes: text("scopes").notNull().default("admin:read"),
 	lastUsedAt: timestamp("last_used_at"),

@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { hashToken } from "@/lib/auth/utils";
 import { SignJWT, importPKCS8, importSPKI, exportJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -319,6 +320,7 @@ export async function generateAccessToken(
 		.insert(schema.oauthAccessToken)
 		.values({
 			token,
+			tokenHash: hashToken(token),
 			clientId: client.clientId,
 			userId: userId ?? null,
 			sessionId: sessionId ?? null,
@@ -349,6 +351,7 @@ export async function generateRefreshToken(
 		.insert(schema.oauthRefreshToken)
 		.values({
 			token,
+			tokenHash: hashToken(token),
 			clientId,
 			userId,
 			sessionId: sessionId ?? null,
@@ -827,7 +830,9 @@ export async function getTokenIntrospection(token: string, clientId?: string): P
 			createdAt: schema.personalAccessToken.createdAt,
 		})
 		.from(schema.personalAccessToken)
-		.where(and(eq(schema.personalAccessToken.token, token), isNull(schema.personalAccessToken.revokedAt)));
+		.where(
+			and(eq(schema.personalAccessToken.tokenHash, hashToken(token)), isNull(schema.personalAccessToken.revokedAt)),
+		);
 
 	if (pat) {
 		const now = new Date();

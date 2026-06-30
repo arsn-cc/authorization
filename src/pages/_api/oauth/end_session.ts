@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { sessionKey } from "@/lib/auth/utils";
+import { sessionKey, hashToken } from "@/lib/auth/utils";
 
 function parseCookie(cookie: string, name: string): string | null {
 	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
@@ -33,10 +33,10 @@ async function handleEndSession(req: Request): Promise<Response> {
 		const [session] = await db
 			.select({ id: schema.session.id })
 			.from(schema.session)
-			.where(eq(schema.session.token, token));
+			.where(eq(schema.session.tokenHash, hashToken(token)));
 
 		await Promise.all([
-			db.delete(schema.session).where(eq(schema.session.token, token)),
+			db.delete(schema.session).where(eq(schema.session.tokenHash, hashToken(token))),
 			cache.delete(sessionKey(token)),
 			...(session
 				? [

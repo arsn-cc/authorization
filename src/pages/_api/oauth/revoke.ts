@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { hashToken } from "@/lib/auth/utils";
 import { authenticateClient } from "@/lib/oauth";
 
 function clientSecretFromBasicAuth(req: Request): string | undefined {
@@ -34,8 +35,8 @@ export async function POST(req: Request): Promise<Response> {
 	const db = await getDb();
 
 	await Promise.all([
-		db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.token, token)),
-		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.token, token)),
+		db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.tokenHash, hashToken(token))),
+		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.tokenHash, hashToken(token))),
 	]);
 
 	return new Response(null, { status: 200 });

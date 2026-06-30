@@ -2,6 +2,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { hashToken } from "@/lib/auth/utils";
 import type { CasLoginParams, CasTicketResult } from "./types";
 
 export type { CasTicket, CasServerConfig, CasLoginParams, CasValidateParams, CasTicketResult } from "./types";
@@ -58,6 +59,7 @@ export async function generateServiceTicket(service: string, userId: number, use
 
 	await db.insert(schema.casTicket).values({
 		ticket,
+		tokenHash: hashToken(ticket),
 		service,
 		userId,
 		username,
@@ -74,7 +76,11 @@ export async function validateServiceTicket(ticket: string, service: string): Pr
 		.select()
 		.from(schema.casTicket)
 		.where(
-			and(eq(schema.casTicket.ticket, ticket), eq(schema.casTicket.service, service), isNull(schema.casTicket.usedAt)),
+			and(
+				eq(schema.casTicket.tokenHash, hashToken(ticket)),
+				eq(schema.casTicket.service, service),
+				isNull(schema.casTicket.usedAt),
+			),
 		);
 
 	if (!row) {

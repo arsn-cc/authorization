@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import type { UserResult } from "./types";
-import { sessionKey, sessionTtlSeconds } from "./utils";
+import { sessionKey, sessionTtlSeconds, hashToken } from "./utils";
 
 export { sessionKey, sessionTtlSeconds };
 
@@ -271,7 +271,10 @@ export async function getCachedOAuthAccessToken(token: string): Promise<CachedAc
 	}
 
 	const db = await getDb();
-	const [row] = await db.select().from(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.token, token));
+	const [row] = await db
+		.select()
+		.from(schema.oauthAccessToken)
+		.where(eq(schema.oauthAccessToken.tokenHash, hashToken(token)));
 	if (!row) {
 		return null;
 	}
@@ -309,7 +312,7 @@ export async function getCachedOAuthRefreshToken(
 		.from(schema.oauthRefreshToken)
 		.where(
 			and(
-				eq(schema.oauthRefreshToken.token, token),
+				eq(schema.oauthRefreshToken.tokenHash, hashToken(token)),
 				eq(schema.oauthRefreshToken.clientId, clientId),
 				isNull(schema.oauthRefreshToken.usedAt),
 			),

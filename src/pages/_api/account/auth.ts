@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
 import { toUserResult } from "@/lib/auth/cache";
+import { hashToken } from "@/lib/auth/utils";
 import type { UserResult } from "@/lib/auth/types";
 
 interface AuthenticatedUser {
@@ -25,7 +26,12 @@ export async function getAccountUser(req: Request): Promise<AuthenticatedUser | 
 		const [row] = await db
 			.select({ user: schema.user })
 			.from(schema.oauthAccessToken)
-			.where(and(eq(schema.oauthAccessToken.token, token), gte(schema.oauthAccessToken.expiresAt, new Date())))
+			.where(
+				and(
+					eq(schema.oauthAccessToken.tokenHash, hashToken(token)),
+					gte(schema.oauthAccessToken.expiresAt, new Date()),
+				),
+			)
 			.innerJoin(schema.user, eq(schema.oauthAccessToken.userId, schema.user.id));
 
 		if (row) {
@@ -39,7 +45,9 @@ export async function getAccountUser(req: Request): Promise<AuthenticatedUser | 
 		const [patRow] = await db
 			.select({ user: schema.user })
 			.from(schema.personalAccessToken)
-			.where(and(eq(schema.personalAccessToken.token, token), isNull(schema.personalAccessToken.revokedAt)))
+			.where(
+				and(eq(schema.personalAccessToken.tokenHash, hashToken(token)), isNull(schema.personalAccessToken.revokedAt)),
+			)
 			.innerJoin(schema.user, eq(schema.personalAccessToken.userId, schema.user.id));
 
 		if (patRow) {

@@ -2,6 +2,7 @@ import { and, count, eq, desc, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { hashToken } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "./auth";
 
 export async function GET(req: Request): Promise<Response> {
@@ -76,6 +77,7 @@ export async function POST(req: Request): Promise<Response> {
 		.values({
 			userId,
 			token,
+			tokenHash: hashToken(token),
 			name,
 			scopes,
 			expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 86400000) : null,

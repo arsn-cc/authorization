@@ -25,6 +25,7 @@ import {
 	PENDING_AUTH_TTL_MINUTES,
 	SESSION_TTL_DAYS,
 	hashSecret,
+	hashToken,
 	sessionKey,
 	hashPassword,
 	verifyPassword,
@@ -380,6 +381,7 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 		.values({
 			userId: user.id,
 			token,
+			tokenHash: hashToken(token),
 			expires,
 			usedAt: now,
 			userAgent: input.userAgent ?? null,
@@ -589,6 +591,7 @@ async function createSessionFromPending(
 		.values({
 			userId,
 			token,
+			tokenHash: hashToken(token),
 			expires,
 			usedAt: new Date(),
 		})
@@ -631,7 +634,7 @@ export async function getSession(token: string): Promise<AuthResult<Authenticate
 			user: schema.user,
 		})
 		.from(schema.session)
-		.where(eq(schema.session.token, token))
+		.where(eq(schema.session.tokenHash, hashToken(token)))
 		.innerJoin(schema.user, eq(schema.session.userId, schema.user.id));
 
 	if (!row) {
@@ -644,7 +647,10 @@ export async function getSession(token: string): Promise<AuthResult<Authenticate
 
 	const now = new Date();
 
-	await db.update(schema.session).set({ usedAt: now }).where(eq(schema.session.token, token));
+	await db
+		.update(schema.session)
+		.set({ usedAt: now })
+		.where(eq(schema.session.tokenHash, hashToken(token)));
 
 	const result: AuthenticatedSession = {
 		sessionId: row.session.id,
@@ -669,10 +675,10 @@ export async function logoutUser(token: string): Promise<AuthResult<true>> {
 	const [session] = await db
 		.select({ id: schema.session.id })
 		.from(schema.session)
-		.where(eq(schema.session.token, token));
+		.where(eq(schema.session.tokenHash, hashToken(token)));
 
 	await Promise.all([
-		db.delete(schema.session).where(eq(schema.session.token, token)),
+		db.delete(schema.session).where(eq(schema.session.tokenHash, hashToken(token))),
 		cache.delete(sessionKey(token)),
 		...(session
 			? [

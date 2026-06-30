@@ -41,6 +41,10 @@ export function hashSecret(secret: string): string {
 	return createHash("sha256").update(secret).digest("hex");
 }
 
+export function hashToken(token: string): string {
+	return hashSecret(token);
+}
+
 export function inDays(days: number) {
 	const d = new Date();
 	d.setDate(d.getDate() + days);
