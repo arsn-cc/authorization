@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { generateSamlLogoutResponse } from "@/lib/saml";
+import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 export async function GET(req: Request): Promise<Response> {
 	return handleLogout(req);
@@ -50,7 +51,7 @@ async function handleLogout(req: Request): Promise<Response> {
 		status: 302,
 		headers: {
 			Location: "https://arsn.cc",
-			"Set-Cookie": "session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+			"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
 		},
 	});
 }

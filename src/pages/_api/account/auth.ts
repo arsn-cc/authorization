@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
 import { toUserResult } from "@/lib/auth/cache";
-import { hashToken } from "@/lib/auth/utils";
+import { hashToken, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 import type { UserResult } from "@/lib/auth/types";
 
 interface AuthenticatedUser {
@@ -62,7 +62,7 @@ export async function getAccountUser(req: Request): Promise<AuthenticatedUser | 
 	}
 
 	const cookie = req.headers.get("cookie") ?? "";
-	const sessionToken = parseCookie(cookie, "session_token");
+	const sessionToken = parseCookie(cookie, SESSION_COOKIE_NAME);
 	if (!sessionToken) {
 		return null;
 	}

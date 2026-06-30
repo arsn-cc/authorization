@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession as getWebSession } from "@/lib/auth";
 import { getRoleById, toUserResult } from "@/lib/auth/cache";
-import { hashToken } from "@/lib/auth/utils";
+import { hashToken, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 import type { UserResult } from "@/lib/auth/types";
 
 export const AdminPermission = {
@@ -95,7 +95,7 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 	}
 
 	const cookie = req.headers.get("cookie") ?? "";
-	const sessionToken = parseCookie(cookie, "session_token");
+	const sessionToken = parseCookie(cookie, SESSION_COOKIE_NAME);
 	if (!sessionToken) {
 		return null;
 	}

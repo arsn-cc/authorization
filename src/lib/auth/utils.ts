@@ -60,3 +60,5 @@ export function inMinutes(minutes: number) {
 export function sessionTtlSeconds(expires: Date): number {
 	return Math.max(1, Math.floor((expires.getTime() - Date.now()) / 1000));
 }
+
+export const SESSION_COOKIE_NAME = "__Host-session_token";

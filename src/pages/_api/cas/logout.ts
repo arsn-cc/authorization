@@ -1,5 +1,6 @@
 import { createLogoutUrl } from "@/lib/cas";
 import { logoutUser } from "@/lib/auth";
+import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 function parseCookie(cookie: string, name: string): string | null {
 	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
@@ -12,7 +13,7 @@ export async function GET(req: Request): Promise<Response> {
 	const redirectUrl = createLogoutUrl(service);
 
 	const cookie = req.headers.get("cookie") ?? "";
-	const token = parseCookie(cookie, "session_token");
+	const token = parseCookie(cookie, SESSION_COOKIE_NAME);
 	if (token) {
 		await logoutUser(token);
 	}
@@ -21,7 +22,7 @@ export async function GET(req: Request): Promise<Response> {
 		status: 302,
 		headers: {
 			Location: redirectUrl,
-			"Set-Cookie": "session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+			"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
 		},
 	});
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { loginUser } from "@/lib/auth";
 import type { AuthResult, LoginResult, PendingLoginResult } from "@/lib/auth/types";
 import { Link } from "waku";
+import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 async function loginAction(
 	prevState: AuthResult<LoginResult | PendingLoginResult> | null,
@@ -19,7 +20,7 @@ async function loginAction(
 
 function setSessionCookie(token: string, expires: Date) {
 	const maxAge = Math.max(0, Math.floor((expires.getTime() - Date.now()) / 1000));
-	document.cookie = `session_token=${encodeURIComponent(token)}; Path=/; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+	document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`;
 }
 
 function getPendingRedirectUrl(data: LoginResult | PendingLoginResult): string | null {

@@ -9,6 +9,7 @@ import {
 	generateSamlResponse,
 } from "@/lib/saml";
 import { getSession } from "@/lib/auth";
+import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 function parseCookie(cookie: string, name: string): string | null {
 	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
@@ -79,7 +80,7 @@ async function handleSso(req: Request): Promise<Response> {
 	}
 
 	const cookie = req.headers.get("cookie") ?? "";
-	const token = parseCookie(cookie, "session_token");
+	const token = parseCookie(cookie, SESSION_COOKIE_NAME);
 	if (!token) {
 		const loginUrl = new URL("/login", url.origin);
 		loginUrl.searchParams.set("redirect", url.pathname + url.search);

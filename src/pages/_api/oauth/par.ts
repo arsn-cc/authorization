@@ -1,5 +1,6 @@
 import { getClientById, generateAuthorizationCode, type AuthorizationRequest } from "@/lib/oauth";
 import { getSession } from "@/lib/auth";
+import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 function parseCookie(cookie: string, name: string): string | null {
 	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
@@ -30,7 +31,7 @@ export async function POST(req: Request): Promise<Response> {
 	}
 
 	const cookie = req.headers.get("cookie") ?? "";
-	const token = parseCookie(cookie, "session_token");
+	const token = parseCookie(cookie, SESSION_COOKIE_NAME);
 	let userId: number | undefined;
 	let sessionId: number | undefined;
 
