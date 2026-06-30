@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
@@ -49,6 +49,24 @@ async function handleEndSession(req: Request): Promise<Response> {
 	}
 
 	if (postLogoutRedirectUri) {
+		const db = await getDb();
+		const clients = await db
+			.select({ redirectUris: schema.client.redirectUris })
+			.from(schema.client)
+			.where(or(eq(schema.client.type, "oauth"), eq(schema.client.type, "oidc")));
+
+		const allowedUris = clients.flatMap((c) => (c.redirectUris ?? "").split(",").map((u) => u.trim())).filter(Boolean);
+
+		if (!allowedUris.some((allowed) => postLogoutRedirectUri.startsWith(allowed))) {
+			return new Response(null, {
+				status: 302,
+				headers: {
+					Location: "https://arsn.cc",
+					"Set-Cookie": "session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+				},
+			});
+		}
+
 		const dest = new URL(postLogoutRedirectUri);
 		if (state) {
 			dest.searchParams.set("state", state);

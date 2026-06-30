@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { schema } from "@/lib/db/schema";
 import { createLoginUrl } from "@/lib/cas";
 
 export async function GET(req: Request): Promise<Response> {
@@ -6,6 +9,25 @@ export async function GET(req: Request): Promise<Response> {
 
 	if (!service) {
 		return Response.json({ error: "missing_service_parameter" }, { status: 400 });
+	}
+
+	try {
+		const _parsed = new URL(service);
+		void _parsed;
+	} catch {
+		return Response.json({ error: "invalid_service_parameter" }, { status: 400 });
+	}
+
+	const db = await getDb();
+	const clients = await db
+		.select({ redirectUris: schema.client.redirectUris })
+		.from(schema.client)
+		.where(eq(schema.client.type, "cas"));
+
+	const allowedUris = clients.flatMap((c) => (c.redirectUris ?? "").split(",").map((u) => u.trim())).filter(Boolean);
+
+	if (allowedUris.length > 0 && !allowedUris.some((allowed) => service.startsWith(allowed))) {
+		return Response.json({ error: "unauthorized_service" }, { status: 400 });
 	}
 
 	const loginUrl = createLoginUrl({ service: encodeURIComponent(service) });
