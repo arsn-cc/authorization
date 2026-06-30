@@ -9,12 +9,7 @@ import {
 	generateSamlResponse,
 } from "@/lib/saml";
 import { getSession } from "@/lib/auth";
-import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
-}
+import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 export async function GET(req: Request): Promise<Response> {
 	return handleSso(req);

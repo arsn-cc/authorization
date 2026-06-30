@@ -1,11 +1,9 @@
+import { eq } from "drizzle-orm";
 import { getClientById, generateAuthorizationCode, type AuthorizationRequest } from "@/lib/oauth";
 import { getSession } from "@/lib/auth";
-import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
-}
+import { getDb } from "@/lib/db";
+import { schema } from "@/lib/db/schema";
+import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 export async function GET(req: Request): Promise<Response> {
 	const url = new URL(req.url);
@@ -63,19 +61,50 @@ export async function GET(req: Request): Promise<Response> {
 		return new Response(null, { status: 302, headers: { Location: dest.toString() } });
 	}
 
+	const prompt = url.searchParams.get("prompt");
+	const maxAge = url.searchParams.get("max_age");
+
 	const cookie = req.headers.get("cookie") ?? "";
 	const token = parseCookie(cookie, SESSION_COOKIE_NAME);
-	if (!token) {
+
+	let sessionUserId: number | null = null;
+	let sessionIdVal: number | null = null;
+
+	if (token) {
+		const session = await getSession(token);
+		if (session.success && session.data) {
+			sessionUserId = session.data.userId;
+			sessionIdVal = session.data.sessionId;
+		}
+	}
+
+	if (prompt === "none" && !sessionUserId) {
+		const dest = new URL(redirectUri);
+		dest.searchParams.set("error", "login_required");
+		if (stateParam) {
+			dest.searchParams.set("state", stateParam);
+		}
+		return new Response(null, { status: 302, headers: { Location: dest.toString() } });
+	}
+
+	if (!sessionUserId || prompt === "login") {
 		const loginUrl = new URL("/login", url.origin);
 		loginUrl.searchParams.set("redirect", url.pathname + url.search);
 		return new Response(null, { status: 302, headers: { Location: loginUrl.toString() } });
 	}
 
-	const session = await getSession(token);
-	if (!session.success || !session.data) {
-		const loginUrl = new URL("/login", url.origin);
-		loginUrl.searchParams.set("redirect", url.pathname + url.search);
-		return new Response(null, { status: 302, headers: { Location: loginUrl.toString() } });
+	if (maxAge && sessionIdVal) {
+		const db = await getDb();
+		const [sessionRow] = await db
+			.select({ createdAt: schema.session.createdAt })
+			.from(schema.session)
+			.where(eq(schema.session.id, sessionIdVal))
+			.limit(1);
+		if (sessionRow && Date.now() - sessionRow.createdAt.getTime() > parseInt(maxAge, 10) * 1000) {
+			const loginUrl = new URL("/login", url.origin);
+			loginUrl.searchParams.set("redirect", url.pathname + url.search);
+			return new Response(null, { status: 302, headers: { Location: loginUrl.toString() } });
+		}
 	}
 
 	const authRequest: AuthorizationRequest = {
@@ -89,7 +118,7 @@ export async function GET(req: Request): Promise<Response> {
 		...(nonceParam ? { nonce: nonceParam } : {}),
 	};
 
-	const code = await generateAuthorizationCode(authRequest, session.data.userId, session.data.sessionId);
+	const code = await generateAuthorizationCode(authRequest, sessionUserId, sessionIdVal ?? undefined);
 
 	const dest = new URL(redirectUri);
 	dest.searchParams.set("code", code);

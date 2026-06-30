@@ -2,12 +2,7 @@ import { eq, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { sessionKey, hashToken, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
-}
+import { parseCookie, sessionKey, hashToken, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 export async function GET(req: Request): Promise<Response> {
 	return handleEndSession(req);

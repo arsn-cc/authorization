@@ -3,18 +3,13 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
 import { toUserResult } from "@/lib/auth/cache";
-import { hashToken, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+import { hashToken, parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 import type { UserResult } from "@/lib/auth/types";
 
 interface AuthenticatedUser {
 	userId: number;
 	sessionToken: string | null;
 	user: UserResult;
-}
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
 }
 
 export async function getAccountUser(req: Request): Promise<AuthenticatedUser | null> {

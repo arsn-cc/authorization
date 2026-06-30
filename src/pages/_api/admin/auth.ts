@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession as getWebSession } from "@/lib/auth";
 import { getRoleById, toUserResult } from "@/lib/auth/cache";
-import { hashToken, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+import { hashToken, parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 import type { UserResult } from "@/lib/auth/types";
 
 export const AdminPermission = {
@@ -33,11 +33,6 @@ export type AdminPermission = (typeof AdminPermission)[keyof typeof AdminPermiss
 interface AdminUser {
 	userId: number;
 	user: UserResult;
-}
-
-function parseCookie(cookie: string, name: string): string | null {
-	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-	return match ? decodeURIComponent(match[1]!) : null;
 }
 
 async function getAdminUser(req: Request): Promise<AdminUser | null> {

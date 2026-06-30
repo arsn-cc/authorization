@@ -62,3 +62,16 @@ export function sessionTtlSeconds(expires: Date): number {
 }
 
 export const SESSION_COOKIE_NAME = "__Host-session_token";
+
+export function parseCookie(cookie: string, name: string): string | null {
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const match = cookie.match(new RegExp(`(?:^|;)\\s*${escaped}=([^;]*)`));
+	if (!match) {
+		return null;
+	}
+	try {
+		return decodeURIComponent(match[1]!);
+	} catch {
+		return match[1]!;
+	}
+}
