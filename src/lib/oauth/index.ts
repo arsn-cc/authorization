@@ -482,25 +482,15 @@ export async function generateIdToken(
 	}
 
 	const keyPair = await getKeyPair();
-	const clientAlg = client.idTokenSignedResponseAlg;
-	const useRs256 = clientAlg === "RS256" || (!clientAlg && keyPair);
-
-	if (useRs256) {
-		if (!keyPair) {
-			throw new Error("RSA keys not configured for RS256 id_token signing");
-		}
-		return await new SignJWT(payload)
-			.setProtectedHeader({ alg: "RS256", kid: keyPair.kid, typ: "JWT" })
-			.sign(keyPair.privateKey);
+	if (!keyPair) {
+		throw new Error(
+			"RSA keys not configured — OAUTH_PRIVATE_KEY and OAUTH_PUBLIC_KEY are required for id_token signing",
+		);
 	}
 
-	const secret = client.clientSecret;
-	if (!secret) {
-		throw new Error("Client secret required for HS256 id_token signing");
-	}
 	return await new SignJWT(payload)
-		.setProtectedHeader({ alg: "HS256", typ: "JWT" })
-		.sign(new TextEncoder().encode(secret));
+		.setProtectedHeader({ alg: "RS256", kid: keyPair.kid, typ: "JWT" })
+		.sign(keyPair.privateKey);
 }
 
 export async function exchangeAuthorizationCode(request: TokenRequest): Promise<TokenResponse> {
@@ -738,10 +728,6 @@ export async function getJwks(_client?: OAuthClient): Promise<{ keys: JWK[] }> {
 }
 
 export async function getDiscoveryDocument(issuer: string): Promise<DiscoveryDocument> {
-	const keyPair = await getKeyPair();
-	const hasRsa = !!keyPair;
-	const signingAlgs = hasRsa ? ["RS256", "HS256"] : ["HS256"];
-
 	return {
 		issuer,
 		authorizationEndpoint: `${issuer}/oauth/authorize`,
@@ -766,9 +752,9 @@ export async function getDiscoveryDocument(issuer: string): Promise<DiscoveryDoc
 			"urn:ietf:params:oauth:grant-type:token-exchange",
 		],
 		tokenEndpointAuthMethodsSupported: ["client_secret_basic", "client_secret_post", "none"],
-		tokenEndpointAuthSigningAlgValuesSupported: signingAlgs,
-		subjectTypesSupported: hasRsa ? ["public", "pairwise"] : ["public"],
-		idTokenSigningAlgValuesSupported: signingAlgs,
+		tokenEndpointAuthSigningAlgValuesSupported: ["RS256"],
+		subjectTypesSupported: ["public"],
+		idTokenSigningAlgValuesSupported: ["RS256"],
 		claimsSupported: [
 			"sub",
 			"iss",
