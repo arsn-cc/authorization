@@ -91,7 +91,15 @@ export async function validateServiceTicket(ticket: string, service: string): Pr
 		return null;
 	}
 
-	await db.update(schema.casTicket).set({ usedAt: new Date() }).where(eq(schema.casTicket.id, row.id));
+	const [updatedTicket] = await db
+		.update(schema.casTicket)
+		.set({ usedAt: new Date() })
+		.where(and(eq(schema.casTicket.id, row.id), isNull(schema.casTicket.usedAt)))
+		.returning({ id: schema.casTicket.id });
+
+	if (!updatedTicket) {
+		return null;
+	}
 
 	return { userId: row.userId, username: row.username };
 }

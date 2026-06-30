@@ -256,10 +256,15 @@ export async function validateAuthorizationCode(
 		}
 	}
 
-	await db
+	const [updatedCode] = await db
 		.update(schema.oauthAuthorizationCode)
 		.set({ usedAt: new Date() })
-		.where(eq(schema.oauthAuthorizationCode.id, row.id));
+		.where(and(eq(schema.oauthAuthorizationCode.id, row.id), isNull(schema.oauthAuthorizationCode.usedAt)))
+		.returning({ id: schema.oauthAuthorizationCode.id });
+
+	if (!updatedCode) {
+		return null;
+	}
 
 	await deleteCachedOAuthAuthCode(code);
 
