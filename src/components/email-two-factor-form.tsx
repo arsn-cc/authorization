@@ -40,6 +40,12 @@ export function EmailTwoFactorForm({
 	}, [verifyState]);
 
 	useEffect(() => {
+		if (window.location.search.includes("p=") || window.location.search.includes("c=")) {
+			window.history.replaceState({}, "", window.location.pathname);
+		}
+	}, []);
+
+	useEffect(() => {
 		if (!codeSent && !code) {
 			setCodeSent(true);
 			void requestEmailTwoFactorLink({ email, pendingAuthToken });

@@ -11,6 +11,15 @@ export default async function EmailTwoFactorPage({ query }: { query?: Record<str
 	const pendingAuthToken = typeof p === "string" ? p : "";
 	const code = typeof c === "string" ? c : "";
 
+	return (
+		<>
+			<meta name="referrer" content="no-referrer" />
+			<EmailTwoFactorContent pendingAuthToken={pendingAuthToken} code={code} />
+		</>
+	);
+}
+
+async function EmailTwoFactorContent({ pendingAuthToken, code }: { pendingAuthToken: string; code: string }) {
 	if (!pendingAuthToken) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">

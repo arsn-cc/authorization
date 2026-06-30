@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLegend } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,12 @@ async function resetAction(prevState: AuthResult<true> | null, formData: FormDat
 
 export function PasswordResetForm({ token }: { token: string }) {
 	const [state, formAction, isPending] = useActionState(resetAction, null);
+
+	useEffect(() => {
+		if (token && window.location.search.includes("token=")) {
+			window.history.replaceState({}, "", window.location.pathname);
+		}
+	}, [token]);
 
 	if (state?.success === true) {
 		return (
@@ -42,7 +48,13 @@ export function PasswordResetForm({ token }: { token: string }) {
 
 				<Field>
 					<FieldLegend variant="label">New password</FieldLegend>
-					<Input name="password" type="password" placeholder="At least 8 characters" required minLength={8} />
+					<Input
+						name="password"
+						type="password"
+						placeholder="8+ chars, upper, lower, digit, special"
+						required
+						minLength={8}
+					/>
 				</Field>
 
 				<Field>

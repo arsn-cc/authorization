@@ -79,7 +79,26 @@ function err(e: AuthError, code: string): AuthResult<never> {
 }
 
 function isValidEmail(email: string): boolean {
-	return Boolean(email && email.includes("@"));
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPassword(password: string): boolean {
+	if (password.length < 8) {
+		return false;
+	}
+	if (!/[A-Z]/.test(password)) {
+		return false;
+	}
+	if (!/[a-z]/.test(password)) {
+		return false;
+	}
+	if (!/[0-9]/.test(password)) {
+		return false;
+	}
+	if (!/[^A-Za-z0-9]/.test(password)) {
+		return false;
+	}
+	return true;
 }
 
 function passwordResetUrl(token: string): string {
@@ -149,8 +168,11 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 			"VALIDATION_ERROR",
 		);
 	}
-	if (!input.password || input.password.length < 8) {
-		return err(new AuthError("Password must be at least 8 characters"), "VALIDATION_ERROR");
+	if (!input.password || !isValidPassword(input.password)) {
+		return err(
+			new AuthError("Password must be at least 8 characters with uppercase, lowercase, digit, and special character"),
+			"VALIDATION_ERROR",
+		);
 	}
 
 	const email = usernameToEmail(input.username);
@@ -257,8 +279,11 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 	if (!input.token) {
 		return err(new AuthError("Invalid or expired reset token"), "INVALID_TOKEN");
 	}
-	if (!input.password || input.password.length < 8) {
-		return err(new AuthError("Password must be at least 8 characters"), "VALIDATION_ERROR");
+	if (!input.password || !isValidPassword(input.password)) {
+		return err(
+			new AuthError("Password must be at least 8 characters with uppercase, lowercase, digit, and special character"),
+			"VALIDATION_ERROR",
+		);
 	}
 
 	const db = await getDb();
