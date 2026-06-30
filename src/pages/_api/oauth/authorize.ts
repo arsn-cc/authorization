@@ -20,12 +20,10 @@ export async function GET(req: Request): Promise<Response> {
 	const nonceParam = url.searchParams.get("nonce");
 
 	if (responseType !== "code") {
-		const dest = new URL(redirectUri ?? "https://arsn.cc");
-		dest.searchParams.set("error", "unsupported_response_type");
-		if (stateParam) {
-			dest.searchParams.set("state", stateParam);
-		}
-		return new Response(null, { status: 302, headers: { Location: dest.toString() } });
+		return Response.json(
+			{ error: "unsupported_response_type" },
+			{ status: 400, headers: { "content-type": "application/json" } },
+		);
 	}
 
 	if (!clientId || !redirectUri) {
@@ -37,12 +35,10 @@ export async function GET(req: Request): Promise<Response> {
 
 	const client = await getClientById(clientId);
 	if (!client) {
-		const dest = new URL(redirectUri);
-		dest.searchParams.set("error", "unauthorized_client");
-		if (stateParam) {
-			dest.searchParams.set("state", stateParam);
-		}
-		return new Response(null, { status: 302, headers: { Location: dest.toString() } });
+		return Response.json(
+			{ error: "unauthorized_client" },
+			{ status: 400, headers: { "content-type": "application/json" } },
+		);
 	}
 
 	if (
