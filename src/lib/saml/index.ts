@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, verify } from "node:crypto";
 import { inflateRawSync, deflateRawSync } from "node:zlib";
 import { SignedXml } from "xml-crypto";
 import { DOMParser } from "@xmldom/xmldom";
@@ -163,6 +163,60 @@ export function signXml(xml: string, privateKey?: string): string {
 	return sig.getSignedXml();
 }
 
+export function signResponse(xml: string, privateKey?: string): string {
+	const key = privateKey ?? getPrivateKey();
+	if (!key) {
+		return xml;
+	}
+
+	const cert = getCertificate();
+	const doc = new DOMParser().parseFromString(xml, "text/xml");
+	const response = doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:protocol", "Response")[0];
+	if (!response) {
+		return xml;
+	}
+
+	const sig = new SignedXml();
+	sig.privateKey = key;
+
+	if (cert) {
+		sig.publicCert = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----`;
+	}
+
+	sig.addReference({
+		xpath: `//*[local-name(.)='Response']`,
+		transforms: ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"],
+		digestAlgorithm: "http://www.w3.org/2001/04/xmlenc#sha256",
+	});
+
+	sig.computeSignature(xml);
+	return sig.getSignedXml();
+}
+
+export function verifyAuthnRequestSignature(
+	samlRequestB64: string,
+	relayState: string | null,
+	sigAlg: string,
+	signature: string,
+	certificatePem: string,
+): boolean {
+	try {
+		const cert = `-----BEGIN CERTIFICATE-----\n${certificatePem}\n-----END CERTIFICATE-----`;
+		const algorithm = sigAlg.includes("rsa-sha256") ? "sha256WithRSAEncryption" : "sha1WithRSAEncryption";
+		const signatureBuffer = Buffer.from(signature, "base64");
+
+		let signedData = `SAMLRequest=${encodeURIComponent(samlRequestB64)}`;
+		if (relayState) {
+			signedData += `&RelayState=${encodeURIComponent(relayState)}`;
+		}
+		signedData += `&SigAlg=${encodeURIComponent(sigAlg)}`;
+
+		return verify(algorithm, Buffer.from(signedData), cert, signatureBuffer);
+	} catch {
+		return false;
+	}
+}
+
 export function generateSamlResponse(
 	config: SamlConfig,
 	user: {
@@ -175,6 +229,7 @@ export function generateSamlResponse(
 		nickname?: string | null;
 	},
 	sessionIndex?: string,
+	requestId?: string,
 ): string {
 	const now = new Date();
 	const responseId = generateId();
@@ -189,12 +244,14 @@ export function generateSamlResponse(
 		}
 	}
 
-	return `<?xml version="1.0" encoding="UTF-8"?>
+	const inResponseTo = requestId ? `InResponseTo="${escapeXml(requestId)}"` : "";
+
+	let response = `<?xml version="1.0" encoding="UTF-8"?>
 <saml2p:Response
 	xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol"
 	xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion"
 	ID="${escapeXml(responseId)}"
-	InResponseTo="${escapeXml(config.entityId)}"
+	${inResponseTo}
 	IssueInstant="${formatDate(now)}"
 	Version="2.0"
 	Destination="${escapeXml(config.acsUrl)}">
@@ -204,6 +261,13 @@ export function generateSamlResponse(
 	</saml2p:Status>
 ${assertion}
 </saml2p:Response>`;
+
+	const privateKey = getPrivateKey();
+	if (privateKey) {
+		response = signResponse(response, privateKey);
+	}
+
+	return response;
 }
 
 export function generateSamlLogoutResponse(config: SamlConfig): string {
@@ -240,6 +304,11 @@ export function encodeSamlResponse(xml: string): string {
 export function parseAuthnRequest(samlRequest: string): DecodedSamlRequest {
 	const decoded = decodeSamlRequest(samlRequest);
 	const result: DecodedSamlRequest = { samlRequest: decoded };
+
+	const requestIdMatch = decoded.match(/ID=["']([^"']+)["']/);
+	if (requestIdMatch) {
+		result.requestId = requestIdMatch[1]!;
+	}
 
 	const sigAlgMatch = decoded.match(/SigAlg=([^&]+)/);
 	if (sigAlgMatch) {

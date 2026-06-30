@@ -1,7 +1,13 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { decodeSamlRequest, parseAuthnRequest, validateAuthnRequest, generateSamlResponse } from "@/lib/saml";
+import {
+	decodeSamlRequest,
+	parseAuthnRequest,
+	validateAuthnRequest,
+	verifyAuthnRequestSignature,
+	generateSamlResponse,
+} from "@/lib/saml";
 import { getSession } from "@/lib/auth";
 
 function parseCookie(cookie: string, name: string): string | null {
@@ -39,8 +45,9 @@ async function handleSso(req: Request): Promise<Response> {
 	}
 
 	const decoded = decodeSamlRequest(samlRequestB64);
+	let parsed;
 	try {
-		parseAuthnRequest(decoded);
+		parsed = parseAuthnRequest(decoded);
 	} catch {
 		return Response.json({ error: "invalid_saml_request" }, { status: 400 });
 	}
@@ -54,6 +61,21 @@ async function handleSso(req: Request): Promise<Response> {
 
 	if (!validateAuthnRequest(config, decoded)) {
 		return Response.json({ error: "invalid_authn_request" }, { status: 400 });
+	}
+
+	if (parsed.signature && parsed.sigAlg) {
+		const relayStateParam = url.searchParams.get("RelayState");
+		if (
+			!verifyAuthnRequestSignature(
+				samlRequestB64,
+				relayStateParam,
+				parsed.sigAlg,
+				parsed.signature,
+				client.samlCertificate ?? "",
+			)
+		) {
+			return Response.json({ error: "invalid_authn_request_signature" }, { status: 400 });
+		}
 	}
 
 	const cookie = req.headers.get("cookie") ?? "";
@@ -84,6 +106,7 @@ async function handleSso(req: Request): Promise<Response> {
 			...(user.nickname ? { nickname: user.nickname } : {}),
 		},
 		user.email,
+		parsed.requestId,
 	);
 
 	const formHtml = [

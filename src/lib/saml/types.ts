@@ -85,6 +85,7 @@ export interface SamlMetadata {
 
 export interface DecodedSamlRequest {
 	samlRequest: string;
+	requestId?: string;
 	relayState?: string;
 	sigAlg?: string;
 	signature?: string;
