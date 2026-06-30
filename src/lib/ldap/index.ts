@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -115,9 +116,18 @@ export function mapRoleToLdapEntry(
 	];
 }
 
+function safeCompare(a: string, b: string): boolean {
+	const bufA = Buffer.from(a);
+	const bufB = Buffer.from(b);
+	if (bufA.length !== bufB.length) {
+		return false;
+	}
+	return timingSafeEqual(bufA, bufB);
+}
+
 export function verifyLdapBind(adminDn: string, adminPassword: string, name: string, password: string): boolean {
-	if (name === adminDn) {
-		return adminPassword === password;
+	if (safeCompare(name, adminDn)) {
+		return safeCompare(adminPassword, password);
 	}
 
 	const email = extractEmailFromDn(name);

@@ -1,4 +1,5 @@
 import net from "node:net";
+import { timingSafeEqual } from "node:crypto";
 import type { LdapServerConfig, LdapSearchFilter } from "./types";
 import { LDAP_RESULT } from "./types";
 import {
@@ -12,6 +13,15 @@ import {
 	encodeSearchResultDone,
 } from "./ber";
 import { getDefaultServerConfig, searchUsers, searchGroups, matchFilter, verifyLdapUserBind } from "./index";
+
+function safeCompare(a: string, b: string): boolean {
+	const bufA = Buffer.from(a);
+	const bufB = Buffer.from(b);
+	if (bufA.length !== bufB.length) {
+		return false;
+	}
+	return timingSafeEqual(bufA, bufB);
+}
 
 interface LdapConnectionState {
 	id: number;
@@ -136,8 +146,8 @@ function handleBind(state: LdapConnectionState, id: number, payload: Buffer, cfg
 		}
 
 		const dn = name.toString("utf8");
-		const isAdmin = dn === cfg.adminDn;
-		const adminOk = isAdmin && password === cfg.adminPassword;
+		const isAdmin = safeCompare(dn, cfg.adminDn);
+		const adminOk = isAdmin && safeCompare(password, cfg.adminPassword);
 		if (!isAdmin) {
 			verifyLdapUserBind(dn, password)
 				.then((ok) => {
