@@ -60,8 +60,17 @@ export async function POST(req: Request): Promise<Response> {
 	}
 
 	const body = (await req.json()) as Record<string, unknown>;
-	const userId = body.userId ? Number(body.userId) : result.userId;
+	const targetUserId = body.userId ? Number(body.userId) : result.userId;
 	const name = body.name as string;
+
+	if (targetUserId !== result.userId) {
+		const writeCheck = await requirePermission(req, AdminPermission.UsersWrite);
+		if (writeCheck instanceof Response) {
+			return writeCheck;
+		}
+	}
+
+	const userId = targetUserId;
 
 	if (!name || typeof name !== "string") {
 		return Response.json({ error: "missing_name" }, { status: 400 });
