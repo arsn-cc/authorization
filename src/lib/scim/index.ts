@@ -63,7 +63,7 @@ function userToScim(u: {
 		...(u.preferredLanguage ? { preferredLanguage: u.preferredLanguage } : {}),
 		...(u.locale ? { locale: u.locale } : {}),
 		...(u.timezone ? { timezone: u.timezone } : {}),
-		active: u.emailVerified !== null,
+		active: true,
 		meta: {
 			resourceType: "User",
 			created: u.createdAt.toISOString(),
@@ -198,7 +198,7 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 			preferredLanguage: input.preferredLanguage ?? null,
 			locale: input.locale ?? null,
 			timezone: input.timezone ?? null,
-			emailVerified: input.active !== false ? new Date() : null,
+			emailVerified: null,
 		})
 		.returning();
 
@@ -253,7 +253,7 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 		values.timezone = input.timezone;
 	}
 	if (input.active !== undefined) {
-		values.emailVerified = input.active ? new Date() : null;
+		values.emailVerified = null;
 	}
 
 	const [updated] = await db.update(schema.user).set(values).where(eq(schema.user.id, id)).returning();
