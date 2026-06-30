@@ -1,6 +1,12 @@
 import { getUser, updateUser, deleteUser } from "@/lib/scim";
+import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }): Promise<Response> {
+export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+	const result = await requirePermission(req, AdminPermission.UsersRead);
+	if (result instanceof Response) {
+		return result;
+	}
+
 	const user = await getUser(Number(params.id));
 	if (!user) {
 		return Response.json(
@@ -12,12 +18,22 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function PUT(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+	const result = await requirePermission(req, AdminPermission.UsersWrite);
+	if (result instanceof Response) {
+		return result;
+	}
+
 	const body = (await req.json()) as Record<string, unknown>;
 	const user = await updateUser(Number(params.id), body as Parameters<typeof updateUser>[1]);
 	return Response.json(user);
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+	const result = await requirePermission(req, AdminPermission.UsersWrite);
+	if (result instanceof Response) {
+		return result;
+	}
+
 	const body = (await req.json()) as Record<string, unknown>;
 	const operations = (body.Operations ?? body.operations) as
 		| Array<{ op: string; path?: string; value?: unknown }>
@@ -30,7 +46,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	return Response.json(user);
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }): Promise<Response> {
+export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+	const result = await requirePermission(req, AdminPermission.UsersDelete);
+	if (result instanceof Response) {
+		return result;
+	}
+
 	await deleteUser(Number(params.id));
 	return new Response(null, { status: 204 });
 }

@@ -1,6 +1,12 @@
 import { getGroup, deleteGroup } from "@/lib/scim";
+import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }): Promise<Response> {
+export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+	const result = await requirePermission(req, AdminPermission.UsersRead);
+	if (result instanceof Response) {
+		return result;
+	}
+
 	const group = await getGroup(Number(params.id));
 	if (!group) {
 		return Response.json(
@@ -11,7 +17,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 	return Response.json(group);
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }): Promise<Response> {
+export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
+	const result = await requirePermission(req, AdminPermission.UsersDelete);
+	if (result instanceof Response) {
+		return result;
+	}
+
 	await deleteGroup(Number(params.id));
 	return new Response(null, { status: 204 });
 }
