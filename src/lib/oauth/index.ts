@@ -591,7 +591,16 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 	}
 
 	const db = await getDb();
-	await db.update(schema.oauthRefreshToken).set({ usedAt: new Date() }).where(eq(schema.oauthRefreshToken.id, row.id));
+	const [updated] = await db
+		.update(schema.oauthRefreshToken)
+		.set({ usedAt: new Date() })
+		.where(and(eq(schema.oauthRefreshToken.id, row.id), isNull(schema.oauthRefreshToken.usedAt)))
+		.returning({ id: schema.oauthRefreshToken.id });
+
+	if (!updated) {
+		throw new Error("invalid_grant");
+	}
+
 	await deleteCachedOAuthRefreshToken(request.refreshToken);
 
 	const rotationEnabled = client.refreshTokenRotationEnabled ?? true;
