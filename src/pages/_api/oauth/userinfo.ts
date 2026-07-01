@@ -1,4 +1,4 @@
-import { getUserInfo, getClientById } from "@/lib/oauth";
+import { getUserInfo } from "@/lib/oauth";
 
 function parseAuthHeader(req: Request): string | null {
 	const auth = req.headers.get("authorization");
@@ -23,14 +23,7 @@ async function handleUserinfo(req: Request): Promise<Response> {
 		return Response.json({ error: "invalid_token" }, { status: 401 });
 	}
 
-	const url = new URL(req.url);
-	const clientId = url.searchParams.get("client_id") ?? "unknown";
-	const client = await getClientById(clientId);
-	if (!client) {
-		return Response.json({ error: "invalid_client" }, { status: 401 });
-	}
-
-	const info = await getUserInfo(accessToken, client);
+	const info = await getUserInfo(accessToken);
 	if (!info) {
 		return Response.json({ error: "invalid_token" }, { status: 401 });
 	}

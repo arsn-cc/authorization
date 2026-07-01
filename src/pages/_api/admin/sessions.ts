@@ -26,7 +26,6 @@ export async function GET(req: Request): Promise<Response> {
 	const sessions = await db
 		.select({
 			id: schema.session.id,
-			token: schema.session.token,
 			userId: schema.session.userId,
 			username: schema.user.username,
 			ip: schema.session.ip,

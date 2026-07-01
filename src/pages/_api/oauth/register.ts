@@ -1,7 +1,13 @@
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
 export async function POST(req: Request): Promise<Response> {
+	const authResult = await requirePermission(req, AdminPermission.ClientsWrite);
+	if (authResult instanceof Response) {
+		return authResult;
+	}
+
 	const body = (await req.json()) as Record<string, unknown>;
 
 	const clientId = body.client_id as string | undefined;

@@ -639,9 +639,12 @@ export async function getUserById(userId: number) {
 	} as unknown as typeof schema.user.$inferSelect;
 }
 
-export async function getUserInfo(accessTokenValue: string, client: OAuthClient): Promise<UserInfoResponse | null> {
+export async function getUserInfo(accessTokenValue: string, client?: OAuthClient): Promise<UserInfoResponse | null> {
 	const cachedToken = await getCachedOAuthAccessToken(accessTokenValue);
-	if (!cachedToken || cachedToken.clientId !== client.clientId) {
+	if (!cachedToken) {
+		return null;
+	}
+	if (client && cachedToken.clientId !== client.clientId) {
 		return null;
 	}
 
