@@ -3,10 +3,10 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import {
 	decodeSamlRequest,
-	parseAuthnRequest,
 	validateAuthnRequest,
 	verifyAuthnRequestSignature,
 	generateSamlResponse,
+	encodeSamlResponse,
 } from "@/lib/saml";
 import { getSession } from "@/lib/auth";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
@@ -41,12 +41,6 @@ async function handleSso(req: Request): Promise<Response> {
 	}
 
 	const decoded = decodeSamlRequest(samlRequestB64);
-	let parsed;
-	try {
-		parsed = parseAuthnRequest(decoded);
-	} catch {
-		return Response.json({ error: "invalid_saml_request" }, { status: 400 });
-	}
 
 	const config = {
 		entityId: client.entityId ?? entityId,
@@ -55,18 +49,20 @@ async function handleSso(req: Request): Promise<Response> {
 		privateKey: "",
 	};
 
-	if (!validateAuthnRequest(config, decoded)) {
+	const validationResult = validateAuthnRequest(config, decoded);
+	if (!validationResult.valid) {
 		return Response.json({ error: "invalid_authn_request" }, { status: 400 });
 	}
 
-	if (parsed.signature && parsed.sigAlg) {
-		const relayStateParam = url.searchParams.get("RelayState");
+	const sigAlgParam = url.searchParams.get("SigAlg");
+	const signatureParam = url.searchParams.get("Signature");
+	if (sigAlgParam && signatureParam) {
 		if (
 			!verifyAuthnRequestSignature(
 				samlRequestB64,
-				relayStateParam,
-				parsed.sigAlg,
-				parsed.signature,
+				relayState ?? null,
+				sigAlgParam,
+				signatureParam,
 				client.samlCertificate ?? "",
 			)
 		) {
@@ -102,14 +98,16 @@ async function handleSso(req: Request): Promise<Response> {
 			...(user.nickname ? { nickname: user.nickname } : {}),
 		},
 		user.email,
-		parsed.requestId,
+		validationResult.requestId,
 	);
 
+	const samlResponseB64 = encodeSamlResponse(samlResponse);
+	const escapedAcsUrl = config.acsUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 	const formHtml = [
 		"<!DOCTYPE html><html><body onload='document.forms[0].submit()'>",
-		`<form method='POST' action='${config.acsUrl}'>`,
-		`<input type='hidden' name='SAMLResponse' value='${encodeURIComponent(samlResponse)}'/>`,
-		relayState ? `<input type='hidden' name='RelayState' value='${encodeURIComponent(relayState)}'/>` : "",
+		`<form method='POST' action='${escapedAcsUrl}'>`,
+		`<input type='hidden' name='SAMLResponse' value='${samlResponseB64}'/>`,
+		relayState ? `<input type='hidden' name='RelayState' value='${relayState}'/>` : "",
 		"</form></body></html>",
 	].join("");
 

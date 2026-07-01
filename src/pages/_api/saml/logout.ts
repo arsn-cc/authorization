@@ -32,11 +32,15 @@ async function handleLogout(req: Request): Promise<Response> {
 			const logoutResponse = generateSamlLogoutResponse(config);
 
 			if (client.casLogoutUrl) {
+				const escapedUrl = (client.casLogoutUrl ?? "")
+					.replace(/&/g, "&amp;")
+					.replace(/"/g, "&quot;")
+					.replace(/'/g, "&#39;");
 				const formHtml = [
 					"<!DOCTYPE html><html><body onload='document.forms[0].submit()'>",
-					`<form method='POST' action='${client.casLogoutUrl}'>`,
-					`<input type='hidden' name='SAMLResponse' value='${encodeURIComponent(logoutResponse)}'/>`,
-					relayState ? `<input type='hidden' name='RelayState' value='${encodeURIComponent(relayState)}'/>` : "",
+					`<form method='POST' action='${escapedUrl}'>`,
+					`<input type='hidden' name='SAMLResponse' value='${logoutResponse}'/>`,
+					relayState ? `<input type='hidden' name='RelayState' value='${relayState}'/>` : "",
 					"</form></body></html>",
 				].join("");
 				return new Response(formHtml, {

@@ -297,6 +297,9 @@ export function decodeSamlRequest(base64Encoded: string): string {
 }
 
 export function encodeSamlResponse(xml: string): string {
+	if (!xml) {
+		return "";
+	}
 	const deflated = deflateRawSync(Buffer.from(xml, "utf-8"));
 	return deflated.toString("base64");
 }
@@ -328,7 +331,7 @@ export function parseAuthnRequest(samlRequest: string): DecodedSamlRequest {
 	return result;
 }
 
-export function validateAuthnRequest(config: SamlConfig, samlRequest: string): boolean {
+export function validateAuthnRequest(config: SamlConfig, samlRequest: string): { valid: boolean; requestId?: string } {
 	const decoded = parseAuthnRequest(samlRequest);
 	const xml = decoded.samlRequest;
 
@@ -336,28 +339,28 @@ export function validateAuthnRequest(config: SamlConfig, samlRequest: string): b
 	if (acsUrlMatch) {
 		const acsUrl = acsUrlMatch[1]!;
 		if (acsUrl !== config.acsUrl) {
-			return false;
+			return { valid: false };
 		}
 	}
 
 	const issuerMatch = xml.match(/<saml2:Issuer[^>]*>([^<]+)<\/saml2:Issuer>/);
 	if (!issuerMatch) {
-		return false;
+		return { valid: false };
 	}
 	const issuer = issuerMatch[1]!;
 	if (issuer !== config.entityId) {
-		return false;
+		return { valid: false };
 	}
 
 	const destMatch = xml.match(/Destination=["']([^"']+)["']/);
 	if (destMatch) {
 		const dest = destMatch[1]!;
-		if (dest !== config.acsUrl && !dest.includes(config.acsUrl)) {
-			return false;
+		if (dest !== config.acsUrl) {
+			return { valid: false };
 		}
 	}
 
-	return true;
+	return { valid: true, ...(decoded.requestId ? { requestId: decoded.requestId } : {}) };
 }
 
 export function generateSamlMetadata(config: SamlMetadata): string {
