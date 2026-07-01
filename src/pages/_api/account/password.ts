@@ -2,7 +2,7 @@ import { and, eq, not } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { verifyPassword, hashPassword } from "@/lib/auth";
+import { verifyPassword, hashPassword, isValidPassword } from "@/lib/auth";
 import { sessionKey } from "@/lib/auth/utils";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getAccountUser, unauthorized } from "./auth";
@@ -21,8 +21,8 @@ export async function POST(req: Request): Promise<Response> {
 		return Response.json({ error: "current_password_and_new_password_required" }, { status: 400 });
 	}
 
-	if (newPassword.length < 8) {
-		return Response.json({ error: "new_password_too_short" }, { status: 400 });
+	if (!isValidPassword(newPassword)) {
+		return Response.json({ error: "new_password_insufficient_complexity" }, { status: 400 });
 	}
 
 	const db = await getDb();

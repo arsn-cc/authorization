@@ -27,7 +27,7 @@ export async function POST(req: Request): Promise<Response> {
 
 	const cookie = req.headers.get("cookie") ?? "";
 	const token = parseCookie(cookie, SESSION_COOKIE_NAME);
-	let userId: number | undefined;
+	let userId: number;
 	let sessionId: number | undefined;
 
 	if (token) {
@@ -35,7 +35,11 @@ export async function POST(req: Request): Promise<Response> {
 		if (session.success && session.data) {
 			userId = session.data.userId;
 			sessionId = session.data.sessionId;
+		} else {
+			return Response.json({ error: "login_required" }, { status: 401 });
 		}
+	} else {
+		return Response.json({ error: "login_required" }, { status: 401 });
 	}
 
 	const authRequest: AuthorizationRequest = {
@@ -51,7 +55,7 @@ export async function POST(req: Request): Promise<Response> {
 		...(nonceParam ? { nonce: nonceParam } : {}),
 	};
 
-	const code = await generateAuthorizationCode(authRequest, userId ?? 0, sessionId);
+	const code = await generateAuthorizationCode(authRequest, userId, sessionId);
 
 	return Response.json({
 		request_uri: `urn:ietf:params:oauth:request_uri:${code}`,

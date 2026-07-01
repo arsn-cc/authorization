@@ -82,7 +82,7 @@ function isValidEmail(email: string): boolean {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function isValidPassword(password: string): boolean {
+export function isValidPassword(password: string): boolean {
 	if (password.length < 8) {
 		return false;
 	}

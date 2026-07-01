@@ -1,6 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { eq, asc, desc, or, count as drizzleCount } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { hashPassword } from "@/lib/auth";
 import type { ScimUser, ScimGroup, ScimName, ScimListResponse, ScimSearchParams, ScimMember } from "./types";
 
 export type {
@@ -187,6 +189,7 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 		.values({
 			username: userName.includes("@") ? userName.split("@")[0]! : userName,
 			email,
+			passwordHash: hashPassword(randomBytes(32).toString("hex")),
 			name: input.name?.formatted ?? null,
 			givenName: input.name?.givenName ?? null,
 			familyName: input.name?.familyName ?? null,

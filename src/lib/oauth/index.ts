@@ -510,6 +510,10 @@ export async function exchangeAuthorizationCode(request: TokenRequest): Promise<
 		throw new Error("invalid_grant");
 	}
 
+	if (result.scope && !validateScope(client, result.scope)) {
+		throw new Error("invalid_scope");
+	}
+
 	const sessionId = result.sessionId;
 	const accessTokenValue = await generateAccessToken(client, result.userId, result.scope, sessionId);
 	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();

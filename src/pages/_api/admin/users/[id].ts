@@ -2,7 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { usernameToEmail, hashPassword, isValidUsername } from "@/lib/auth";
+import { usernameToEmail, hashPassword, isValidUsername, isValidPassword } from "@/lib/auth";
 import { sessionKey } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "../auth";
 
@@ -104,7 +104,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		}
 	}
 
-	if (body.password && typeof body.password === "string" && body.password.length >= 8) {
+	if (body.password && typeof body.password === "string" && isValidPassword(body.password)) {
 		updates.passwordHash = hashPassword(body.password);
 	}
 
