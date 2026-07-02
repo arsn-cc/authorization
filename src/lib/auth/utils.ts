@@ -9,19 +9,35 @@ export function sessionKey(token: string) {
 	return `session:${token}`;
 }
 
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const SCRYPT_KEYLEN = 64;
+
 export function hashPassword(password: string): string {
 	const salt = randomBytes(16).toString("hex");
-	const hash = scryptSync(password, salt, 64).toString("hex");
+	const hash = scryptSync(password, salt, SCRYPT_KEYLEN, {
+		N: SCRYPT_N,
+		r: SCRYPT_R,
+		p: SCRYPT_P,
+	}).toString("hex");
 	return `${salt}:${hash}`;
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
 	const [salt, hash] = stored.split(":");
-	const derived = scryptSync(password, salt!, 64).toString("hex");
-	if (derived.length !== hash!.length) {
+	if (!salt || !hash) {
 		return false;
 	}
-	return timingSafeEqual(Buffer.from(derived), Buffer.from(hash!));
+	const derived = scryptSync(password, salt, SCRYPT_KEYLEN, {
+		N: SCRYPT_N,
+		r: SCRYPT_R,
+		p: SCRYPT_P,
+	}).toString("hex");
+	if (derived.length !== hash.length) {
+		return false;
+	}
+	return timingSafeEqual(Buffer.from(derived), Buffer.from(hash));
 }
 
 export function generateToken(): string {
