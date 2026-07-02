@@ -95,9 +95,7 @@ export interface UserResult {
 	loginShell: string | null;
 	gecos: string | null;
 	roleId: number | null;
-	totpSecret: string | null;
 	totpEnabled: boolean;
-	totpBackupCodes: string | null;
 	emailTwoFactorEnabled: boolean;
 	createdAt: Date;
 	updatedAt: Date;

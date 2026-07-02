@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { loginUser } from "@/lib/auth";
 import type { AuthResult, LoginResult, PendingLoginResult } from "@/lib/auth/types";
 import { Link } from "waku";
-import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 async function loginAction(
 	prevState: AuthResult<LoginResult | PendingLoginResult> | null,
@@ -18,9 +17,12 @@ async function loginAction(
 	return loginUser({ login, password });
 }
 
-function setSessionCookie(token: string, expires: Date) {
-	const maxAge = Math.max(0, Math.floor((expires.getTime() - Date.now()) / 1000));
-	document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+async function setSessionCookie(token: string, expires: Date) {
+	await fetch("/auth/set-session", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ token, expires: expires.toISOString() }),
+	});
 }
 
 function getPendingRedirectUrl(data: LoginResult | PendingLoginResult): string | null {
@@ -50,7 +52,7 @@ export function LoginForm({ registrationDisabled }: { registrationDisabled?: boo
 				return;
 			}
 			if ("token" in data && data.token) {
-				setSessionCookie(data.token, data.expires);
+				void setSessionCookie(data.token, data.expires);
 				window.location.href = "https://arsn.cc";
 			}
 		}

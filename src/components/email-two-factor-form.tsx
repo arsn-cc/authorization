@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { requestEmailTwoFactorLink, verifyEmailTwoFactorAndLogin } from "@/lib/auth";
 import type { AuthResult, LoginResult } from "@/lib/auth/types";
 import { Link } from "waku";
-import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
-function setSessionCookie(token: string, expires: Date) {
-	const maxAge = Math.max(0, Math.floor((expires.getTime() - Date.now()) / 1000));
-	document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+async function setSessionCookie(token: string, expires: Date) {
+	await fetch("/auth/set-session", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ token, expires: expires.toISOString() }),
+	});
 }
 
 export function EmailTwoFactorForm({
@@ -34,7 +36,7 @@ export function EmailTwoFactorForm({
 
 	useEffect(() => {
 		if (verifyState?.success === true) {
-			setSessionCookie(verifyState.data.token, verifyState.data.expires);
+			void setSessionCookie(verifyState.data.token, verifyState.data.expires);
 			window.location.href = "https://arsn.cc";
 		}
 	}, [verifyState]);
@@ -57,9 +59,9 @@ export function EmailTwoFactorForm({
 			void verifyEmailTwoFactorAndLogin({
 				pendingAuthToken,
 				emailCode: code,
-			}).then((result) => {
+			}).then(async (result) => {
 				if (result.success) {
-					setSessionCookie(result.data.token, result.data.expires);
+					await setSessionCookie(result.data.token, result.data.expires);
 					window.location.href = "https://arsn.cc";
 				}
 				return;

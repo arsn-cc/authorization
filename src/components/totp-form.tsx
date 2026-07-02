@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { verifyTotpAndLogin } from "@/lib/auth";
 import type { AuthResult, LoginResult } from "@/lib/auth/types";
 import { Link } from "waku";
-import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
-function setSessionCookie(token: string, expires: Date) {
-	const maxAge = Math.max(0, Math.floor((expires.getTime() - Date.now()) / 1000));
-	document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+async function setSessionCookie(token: string, expires: Date) {
+	await fetch("/auth/set-session", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ token, expires: expires.toISOString() }),
+	});
 }
 
 async function totpAction(
@@ -28,7 +30,7 @@ export function TotpForm({ pendingAuthToken }: { pendingAuthToken: string }) {
 
 	useEffect(() => {
 		if (state?.success === true) {
-			setSessionCookie(state.data.token, state.data.expires);
+			void setSessionCookie(state.data.token, state.data.expires);
 			window.location.href = "https://arsn.cc";
 		}
 	}, [state]);

@@ -27,20 +27,22 @@ function getTransport(): nodemailer.Transporter {
 	return _transport;
 }
 
-const fromName = process.env.SMTP_FROM_NAME ?? "ARSN";
-const fromAddress = process.env.SMTP_FROM_ADDRESS ?? "noreply@arsn.cc";
+const rawName = process.env.SMTP_FROM_NAME ?? "ARSN";
+const rawAddress = process.env.SMTP_FROM_ADDRESS ?? "noreply@arsn.cc";
+const fromName = rawName.replace(/[\r\n]/g, "").trim();
+const fromAddress = rawAddress.replace(/[\r\n]/g, "").trim();
 
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
 	try {
 		const info = await getTransport().sendMail({
-			from: `"${fromName}" <${fromAddress}>`,
+			from: { name: fromName, address: fromAddress },
 			to: input.to,
 			subject: input.subject,
 			html: input.html,
 		});
 		return { success: true, messageId: info.messageId };
 	} catch (cause) {
-		const message = cause instanceof Error ? cause.message : "Unknown SMTP error";
-		return { success: false, error: { code: "SMTP_ERROR", message } };
+		const genericMsg = cause instanceof Error ? cause.message : "Unknown SMTP error";
+		return { success: false, error: { code: "SMTP_ERROR", message: genericMsg } };
 	}
 }
