@@ -27,7 +27,7 @@ export async function POST(req: Request): Promise<Response> {
 	}
 
 	const deviceCode = randomBytes(32).toString("hex");
-	const userCode = randomBytes(4).toString("base64url").toUpperCase();
+	const userCode = randomBytes(6).toString("base64url").toUpperCase();
 	const verificationUri = process.env.OAUTH_DEVICE_VERIFICATION_URI ?? `${new URL(req.url).origin}/device`;
 	const expiresIn = 600;
 

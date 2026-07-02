@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { hashToken } from "@/lib/auth/utils";
 import { authenticateClient } from "@/lib/oauth";
+import { deleteCachedOAuthAccessToken, deleteCachedOAuthRefreshToken } from "@/lib/auth/cache";
 
 function clientSecretFromBasicAuth(req: Request): string | undefined {
 	const auth = req.headers.get("authorization");
@@ -33,10 +34,17 @@ export async function POST(req: Request): Promise<Response> {
 	}
 
 	const db = await getDb();
+	const tokenHash = hashToken(token);
 
 	await Promise.all([
-		db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.tokenHash, hashToken(token))),
-		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.tokenHash, hashToken(token))),
+		db
+			.delete(schema.oauthAccessToken)
+			.where(and(eq(schema.oauthAccessToken.tokenHash, tokenHash), eq(schema.oauthAccessToken.clientId, clientId))),
+		db
+			.delete(schema.oauthRefreshToken)
+			.where(and(eq(schema.oauthRefreshToken.tokenHash, tokenHash), eq(schema.oauthRefreshToken.clientId, clientId))),
+		deleteCachedOAuthAccessToken(token),
+		deleteCachedOAuthRefreshToken(token),
 	]);
 
 	return new Response(null, { status: 200 });

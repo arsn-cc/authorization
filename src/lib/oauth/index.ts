@@ -520,7 +520,7 @@ export async function exchangeAuthorizationCode(request: TokenRequest): Promise<
 
 	const response: TokenResponse = {
 		accessToken: accessTokenValue,
-		tokenType: client.dpopBound ? "DPoP" : "Bearer",
+		tokenType: "Bearer",
 		expiresIn: ttl,
 		scope: result.scope,
 	};
@@ -566,7 +566,7 @@ export async function exchangeClientCredentials(request: ClientCredentials): Pro
 
 	return {
 		accessToken: accessTokenValue,
-		tokenType: client.dpopBound ? "DPoP" : "Bearer",
+		tokenType: "Bearer",
 		expiresIn: ttl,
 		scope,
 	};
@@ -615,7 +615,7 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 
 	const response: TokenResponse = {
 		accessToken: accessTokenValue,
-		tokenType: client.dpopBound ? "DPoP" : "Bearer",
+		tokenType: "Bearer",
 		expiresIn: ttl,
 		scope: row.scope,
 	};

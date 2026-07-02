@@ -52,7 +52,7 @@ async function handleEndSession(req: Request): Promise<Response> {
 
 		const allowedUris = clients.flatMap((c) => (c.redirectUris ?? "").split(",").map((u) => u.trim())).filter(Boolean);
 
-		if (!allowedUris.some((allowed) => postLogoutRedirectUri.startsWith(allowed))) {
+		if (!allowedUris.includes(postLogoutRedirectUri)) {
 			return new Response(null, {
 				status: 302,
 				headers: {

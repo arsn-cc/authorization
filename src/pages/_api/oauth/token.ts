@@ -18,13 +18,22 @@ function clientCredentials(req: Request): string | null {
 export async function POST(req: Request): Promise<Response> {
 	const contentType = req.headers.get("content-type") ?? "";
 
-	let body: Record<string, string>;
 	if (contentType.includes("application/json")) {
-		body = (await req.json()) as Record<string, string>;
-	} else {
-		const form = await req.formData();
-		body = Object.fromEntries(form.entries()) as Record<string, string>;
+		return Response.json(
+			{
+				error: "invalid_request",
+				error_description: "JSON content type not accepted. Use application/x-www-form-urlencoded.",
+			},
+			{ status: 400 },
+		);
 	}
+
+	if (!contentType.includes("application/x-www-form-urlencoded")) {
+		return Response.json({ error: "invalid_request" }, { status: 400 });
+	}
+
+	const form = await req.formData();
+	const body = Object.fromEntries(form.entries()) as Record<string, string>;
 
 	const bodyClientId = body.client_id || clientCredentials(req) || "";
 	const grantType = body.grant_type as TokenRequest["grantType"];
@@ -77,14 +86,21 @@ export async function POST(req: Request): Promise<Response> {
 				return Response.json({ error: "unsupported_grant_type" }, { status: 400 });
 		}
 
-		return Response.json({
+		const result: Record<string, string | number> = {
 			access_token: response.accessToken,
 			token_type: response.tokenType,
 			expires_in: response.expiresIn,
-			refresh_token: response.refreshToken,
-			scope: response.scope,
-			id_token: response.idToken,
-		});
+		};
+		if (response.refreshToken) {
+			result.refresh_token = response.refreshToken;
+		}
+		if (response.scope) {
+			result.scope = response.scope;
+		}
+		if (response.idToken) {
+			result.id_token = response.idToken;
+		}
+		return Response.json(result);
 	} catch (e) {
 		const message = e instanceof Error ? e.message : "server_error";
 		return Response.json({ error: message }, { status: 400 });

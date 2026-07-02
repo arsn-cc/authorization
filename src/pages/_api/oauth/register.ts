@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
@@ -20,9 +21,26 @@ export async function POST(req: Request): Promise<Response> {
 		return Response.json({ error: "invalid_client_metadata" }, { status: 400 });
 	}
 
+	for (const uri of redirectUris) {
+		try {
+			const parsed = new URL(uri);
+			if (parsed.hash) {
+				return Response.json(
+					{ error: "invalid_redirect_uri", error_description: "Redirect URI must not contain a fragment" },
+					{ status: 400 },
+				);
+			}
+			if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+				return Response.json({ error: "invalid_redirect_uri" }, { status: 400 });
+			}
+		} catch {
+			return Response.json({ error: "invalid_redirect_uri" }, { status: 400 });
+		}
+	}
+
 	const db = await getDb();
-	const id = clientId ?? crypto.randomUUID();
-	const secret = crypto.randomUUID();
+	const id = clientId ?? randomBytes(16).toString("hex");
+	const secret = randomBytes(32).toString("hex");
 
 	const [inserted] = await db
 		.insert(schema.client)

@@ -52,6 +52,13 @@ export async function GET(req: Request): Promise<Response> {
 		);
 	}
 
+	if (client.pkceRequired && !codeChallengeParam) {
+		return Response.json(
+			{ error: "invalid_request", error_description: "PKCE is required for this client" },
+			{ status: 400 },
+		);
+	}
+
 	if (scope && !scope.split(" ").every((s) => client.scopes.split(" ").includes(s))) {
 		const dest = new URL(redirectUri);
 		dest.searchParams.set("error", "invalid_scope");

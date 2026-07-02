@@ -1,10 +1,30 @@
-import { getClientById, generateAuthorizationCode, type AuthorizationRequest } from "@/lib/oauth";
+import { randomBytes } from "node:crypto";
+import {
+	generateAuthorizationCode,
+	type AuthorizationRequest,
+	authenticateClient,
+	validateRedirectUri,
+} from "@/lib/oauth";
 import { getSession } from "@/lib/auth";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+
+function clientSecretFromBasicAuth(req: Request): string | undefined {
+	const auth = req.headers.get("authorization");
+	if (!auth?.startsWith("Basic ")) {
+		return undefined;
+	}
+	const decoded = atob(auth.slice(6));
+	const colon = decoded.indexOf(":");
+	if (colon !== -1 && colon + 1 < decoded.length) {
+		return decoded.slice(colon + 1);
+	}
+	return undefined;
+}
 
 export async function POST(req: Request): Promise<Response> {
 	const form = await req.formData();
 	const clientId = form.get("client_id") as string;
+	const clientSecret = (form.get("client_secret") as string | undefined) ?? clientSecretFromBasicAuth(req);
 	const redirectUri = form.get("redirect_uri") as string;
 	const scope = (form.get("scope") as string) ?? "openid";
 	const stateParam = form.get("state") as string | null;
@@ -16,9 +36,13 @@ export async function POST(req: Request): Promise<Response> {
 		return Response.json({ error: "invalid_request" }, { status: 400 });
 	}
 
-	const client = await getClientById(clientId);
+	const client = await authenticateClient(clientId, clientSecret);
 	if (!client) {
 		return Response.json({ error: "unauthorized_client" }, { status: 400 });
+	}
+
+	if (!validateRedirectUri(client, redirectUri)) {
+		return Response.json({ error: "invalid_redirect_uri" }, { status: 400 });
 	}
 
 	if (scope && !scope.split(" ").every((s) => client.scopes.split(" ").includes(s))) {
@@ -55,10 +79,10 @@ export async function POST(req: Request): Promise<Response> {
 		...(nonceParam ? { nonce: nonceParam } : {}),
 	};
 
-	const code = await generateAuthorizationCode(authRequest, userId, sessionId);
+	await generateAuthorizationCode(authRequest, userId, sessionId);
 
 	return Response.json({
-		request_uri: `urn:ietf:params:oauth:request_uri:${code}`,
+		request_uri: `urn:ietf:params:oauth:request_uri:${randomBytes(16).toString("hex")}`,
 		expires_in: 600,
 	});
 }
