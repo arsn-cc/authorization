@@ -56,6 +56,10 @@ async function handleSso(req: Request): Promise<Response> {
 
 	const sigAlgParam = url.searchParams.get("SigAlg");
 	const signatureParam = url.searchParams.get("Signature");
+	const requireSignature = Boolean(client.samlCertificate);
+	if (requireSignature && (!sigAlgParam || !signatureParam)) {
+		return Response.json({ error: "missing_authn_request_signature" }, { status: 400 });
+	}
 	if (sigAlgParam && signatureParam) {
 		if (
 			!verifyAuthnRequestSignature(

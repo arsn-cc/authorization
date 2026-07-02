@@ -15,6 +15,11 @@ export type {
 	DecodedSamlRequest,
 } from "./types";
 
+const xmlParser = new DOMParser({
+	locator: false,
+	onError: () => {},
+});
+
 function escapeXml(s: string): string {
 	return s
 		.replace(/&/g, "&amp;")
@@ -140,7 +145,7 @@ export function signXml(xml: string, privateKey?: string): string {
 	}
 
 	const cert = getCertificate();
-	const doc = new DOMParser().parseFromString(xml, "text/xml");
+	const doc = xmlParser.parseFromString(xml, "text/xml");
 	const assertion = doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:assertion", "Assertion")[0];
 	if (!assertion) {
 		return xml;
@@ -170,7 +175,7 @@ export function signResponse(xml: string, privateKey?: string): string {
 	}
 
 	const cert = getCertificate();
-	const doc = new DOMParser().parseFromString(xml, "text/xml");
+	const doc = xmlParser.parseFromString(xml, "text/xml");
 	const response = doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:protocol", "Response")[0];
 	if (!response) {
 		return xml;
@@ -201,8 +206,10 @@ export function verifyAuthnRequestSignature(
 	certificatePem: string,
 ): boolean {
 	try {
+		if (!sigAlg.includes("rsa-sha256")) {
+			return false;
+		}
 		const cert = `-----BEGIN CERTIFICATE-----\n${certificatePem}\n-----END CERTIFICATE-----`;
-		const algorithm = sigAlg.includes("rsa-sha256") ? "sha256WithRSAEncryption" : "sha1WithRSAEncryption";
 		const signatureBuffer = Buffer.from(signature, "base64");
 
 		let signedData = `SAMLRequest=${encodeURIComponent(samlRequestB64)}`;
@@ -211,7 +218,7 @@ export function verifyAuthnRequestSignature(
 		}
 		signedData += `&SigAlg=${encodeURIComponent(sigAlg)}`;
 
-		return verify(algorithm, Buffer.from(signedData), cert, signatureBuffer);
+		return verify("sha256WithRSAEncryption", Buffer.from(signedData), cert, signatureBuffer);
 	} catch {
 		return false;
 	}
