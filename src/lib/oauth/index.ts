@@ -140,7 +140,8 @@ export async function authenticateClient(clientId: string, clientSecret?: string
 	if (!client.clientSecret || !clientSecret) {
 		return null;
 	}
-	if (!safeCompare(client.clientSecret, clientSecret)) {
+	const secretHash = hashToken(clientSecret);
+	if (!safeCompare(client.clientSecret, secretHash)) {
 		return null;
 	}
 	return client;
@@ -191,13 +192,14 @@ export async function generateAuthorizationCode(
 ): Promise<string> {
 	const db = await getDb();
 	const code = generateTokenValue();
+	const codeHash = hashToken(code);
 	const ttl = getAuthorizationCodeTtl();
 	const expiresAt = new Date(Date.now() + ttl * 1000);
 
 	const [inserted] = await db
 		.insert(schema.oauthAuthorizationCode)
 		.values({
-			code,
+			code: codeHash,
 			clientId: request.clientId,
 			userId,
 			sessionId: sessionId ?? null,
@@ -225,12 +227,13 @@ export async function validateAuthorizationCode(
 	codeVerifier?: string,
 ): Promise<{ userId: number; scope: string; nonce?: string; sessionId?: number } | null> {
 	const db = await getDb();
+	const codeHash = hashToken(code);
 	const [row] = await db
 		.select()
 		.from(schema.oauthAuthorizationCode)
 		.where(
 			and(
-				eq(schema.oauthAuthorizationCode.code, code),
+				eq(schema.oauthAuthorizationCode.code, codeHash),
 				eq(schema.oauthAuthorizationCode.clientId, clientId),
 				isNull(schema.oauthAuthorizationCode.usedAt),
 			),
@@ -266,7 +269,7 @@ export async function validateAuthorizationCode(
 		return null;
 	}
 
-	await deleteCachedOAuthAuthCode(code);
+	await deleteCachedOAuthAuthCode(codeHash);
 
 	const result: { userId: number; scope: string; nonce?: string; sessionId?: number } = {
 		userId: row.userId,

@@ -2,6 +2,7 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { count, eq, asc, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { hashToken } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "./auth";
 
 export async function GET(req: Request): Promise<Response> {
@@ -74,7 +75,7 @@ export async function POST(req: Request): Promise<Response> {
 			clientId: body.clientId as string,
 			type: body.type as string,
 			name: body.name as string,
-			clientSecret: (body.clientSecret as string | null) ?? null,
+			clientSecret: body.clientSecret ? hashToken(body.clientSecret as string) : null,
 			redirectUris: (body.redirectUris as string | null) ?? null,
 			grants: (body.grants as string | null) ?? null,
 			scopes: (body.scopes ?? "openid profile email") as string,

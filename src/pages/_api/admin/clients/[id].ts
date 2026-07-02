@@ -2,6 +2,7 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { hashToken } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "../auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -66,6 +67,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 				updates[field] = val === true ? 1 : val === false ? 0 : null;
 			} else if (field === "accessTokenTtl") {
 				updates[field] = val ? Number(val) : null;
+			} else if (field === "clientSecret") {
+				updates[field] = val === null ? null : hashToken(val as string);
 			} else {
 				updates[field] = val === null ? null : (val as string);
 			}

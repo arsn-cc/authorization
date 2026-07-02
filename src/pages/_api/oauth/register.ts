@@ -2,6 +2,7 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { hashToken } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
 export async function POST(req: Request): Promise<Response> {
@@ -50,7 +51,7 @@ export async function POST(req: Request): Promise<Response> {
 		.values({
 			clientId: id,
 			type: "oauth",
-			clientSecret: secret,
+			clientSecret: hashToken(secret),
 			name: clientName,
 			redirectUris: redirectUris.join(","),
 			grants: (grantTypes ?? ["authorization_code"]).join(","),
