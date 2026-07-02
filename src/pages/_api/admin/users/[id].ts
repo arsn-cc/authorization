@@ -131,6 +131,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		return result;
 	}
 
+	if (result.userId === Number(params.id)) {
+		return withSecurityHeaders(Response.json({ error: "cannot_delete_own_account" }, { status: 403 }));
+	}
+
 	const db = await getDb();
 	const cache = await getCache();
 	const userId = Number(params.id);

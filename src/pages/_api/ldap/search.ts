@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { searchUsers, searchGroups, getDefaultServerConfig } from "@/lib/ldap";
+import { searchUsers, getDefaultServerConfig } from "@/lib/ldap";
 import { getAccountUser } from "@/pages/_api/account/auth";
 
 export async function POST(req: Request): Promise<Response> {
@@ -9,18 +9,13 @@ export async function POST(req: Request): Promise<Response> {
 	}
 
 	const body = (await req.json()) as Record<string, unknown>;
-	const baseDn = (body.base_dn as string) ?? "";
-	const filter = (body.filter as string) ?? "";
+	const _baseDn = (body.base_dn as string) ?? "";
+	const _filter = (body.filter as string) ?? "";
 
 	const config = getDefaultServerConfig();
 
 	try {
-		let entries;
-		if (baseDn.toLowerCase().includes("ou=groups") || filter.toLowerCase().includes("objectclass=group")) {
-			entries = await searchGroups(config.domain);
-		} else {
-			entries = await searchUsers(config.domain);
-		}
+		const entries = await searchUsers(config.domain);
 
 		return withSecurityHeaders(
 			Response.json({
