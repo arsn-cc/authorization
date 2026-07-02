@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -53,33 +54,39 @@ async function handleEndSession(req: Request): Promise<Response> {
 		const allowedUris = clients.flatMap((c) => (c.redirectUris ?? "").split(",").map((u) => u.trim())).filter(Boolean);
 
 		if (!allowedUris.includes(postLogoutRedirectUri)) {
-			return new Response(null, {
-				status: 302,
-				headers: {
-					Location: "https://arsn.cc",
-					"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
-				},
-			});
+			return withSecurityHeaders(
+				new Response(null, {
+					status: 302,
+					headers: {
+						Location: "https://arsn.cc",
+						"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+					},
+				}),
+			);
 		}
 
 		const dest = new URL(postLogoutRedirectUri);
 		if (state) {
 			dest.searchParams.set("state", state);
 		}
-		return new Response(null, {
-			status: 302,
-			headers: {
-				Location: dest.toString(),
-				"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
-			},
-		});
+		return withSecurityHeaders(
+			new Response(null, {
+				status: 302,
+				headers: {
+					Location: dest.toString(),
+					"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+				},
+			}),
+		);
 	}
 
-	return new Response(null, {
-		status: 302,
-		headers: {
-			Location: "https://arsn.cc",
-			"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
-		},
-	});
+	return withSecurityHeaders(
+		new Response(null, {
+			status: 302,
+			headers: {
+				Location: "https://arsn.cc",
+				"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+			},
+		}),
+	);
 }

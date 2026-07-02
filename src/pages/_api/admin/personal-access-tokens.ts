@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { and, count, eq, desc, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
@@ -50,7 +51,9 @@ export async function GET(req: Request): Promise<Response> {
 		.limit(perPage)
 		.offset((page - 1) * perPage);
 
-	return Response.json({ data: tokens, total, page, perPage, totalPages: Math.ceil(total / perPage) });
+	return withSecurityHeaders(
+		Response.json({ data: tokens, total, page, perPage, totalPages: Math.ceil(total / perPage) }),
+	);
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -73,7 +76,7 @@ export async function POST(req: Request): Promise<Response> {
 	const userId = targetUserId;
 
 	if (!name || typeof name !== "string") {
-		return Response.json({ error: "missing_name" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_name" }, { status: 400 }));
 	}
 
 	const db = await getDb();
@@ -98,5 +101,5 @@ export async function POST(req: Request): Promise<Response> {
 			expiresAt: schema.personalAccessToken.expiresAt,
 		});
 
-	return Response.json({ ...inserted, token }, { status: 201 });
+	return withSecurityHeaders(Response.json({ ...inserted, token }, { status: 201 }));
 }

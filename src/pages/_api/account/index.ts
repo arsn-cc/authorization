@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -39,10 +40,10 @@ export async function GET(req: Request): Promise<Response> {
 		.where(eq(schema.user.id, authed.userId));
 
 	if (!user) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	return Response.json(user);
+	return withSecurityHeaders(Response.json(user));
 }
 
 export async function PATCH(req: Request): Promise<Response> {
@@ -78,7 +79,7 @@ export async function PATCH(req: Request): Promise<Response> {
 	}
 
 	if (Object.keys(updates).length === 0) {
-		return Response.json({ error: "no_fields_to_update" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "no_fields_to_update" }, { status: 400 }));
 	}
 
 	updates.updatedAt = new Date();
@@ -104,10 +105,10 @@ export async function PATCH(req: Request): Promise<Response> {
 	});
 
 	if (!updated) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
 
-	return Response.json(updated);
+	return withSecurityHeaders(Response.json(updated));
 }

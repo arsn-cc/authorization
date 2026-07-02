@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getClientById, generateAuthorizationCode, type AuthorizationRequest } from "@/lib/oauth";
 import { getSession } from "@/lib/auth";
@@ -19,24 +20,24 @@ export async function GET(req: Request): Promise<Response> {
 	const nonceParam = url.searchParams.get("nonce");
 
 	if (responseType !== "code") {
-		return Response.json(
-			{ error: "unsupported_response_type" },
-			{ status: 400, headers: { "content-type": "application/json" } },
+		return withSecurityHeaders(
+			Response.json(
+				{ error: "unsupported_response_type" },
+				{ status: 400, headers: { "content-type": "application/json" } },
+			),
 		);
 	}
 
 	if (!clientId || !redirectUri) {
-		return Response.json(
-			{ error: "invalid_request" },
-			{ status: 400, headers: { "content-type": "application/json" } },
+		return withSecurityHeaders(
+			Response.json({ error: "invalid_request" }, { status: 400, headers: { "content-type": "application/json" } }),
 		);
 	}
 
 	const client = await getClientById(clientId);
 	if (!client) {
-		return Response.json(
-			{ error: "unauthorized_client" },
-			{ status: 400, headers: { "content-type": "application/json" } },
+		return withSecurityHeaders(
+			Response.json({ error: "unauthorized_client" }, { status: 400, headers: { "content-type": "application/json" } }),
 		);
 	}
 
@@ -46,16 +47,20 @@ export async function GET(req: Request): Promise<Response> {
 			.map((u) => u.trim())
 			.includes(redirectUri)
 	) {
-		return Response.json(
-			{ error: "invalid_redirect_uri" },
-			{ status: 400, headers: { "content-type": "application/json" } },
+		return withSecurityHeaders(
+			Response.json(
+				{ error: "invalid_redirect_uri" },
+				{ status: 400, headers: { "content-type": "application/json" } },
+			),
 		);
 	}
 
 	if (client.pkceRequired && !codeChallengeParam) {
-		return Response.json(
-			{ error: "invalid_request", error_description: "PKCE is required for this client" },
-			{ status: 400 },
+		return withSecurityHeaders(
+			Response.json(
+				{ error: "invalid_request", error_description: "PKCE is required for this client" },
+				{ status: 400 },
+			),
 		);
 	}
 
@@ -65,7 +70,7 @@ export async function GET(req: Request): Promise<Response> {
 		if (stateParam) {
 			dest.searchParams.set("state", stateParam);
 		}
-		return new Response(null, { status: 302, headers: { Location: dest.toString() } });
+		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
 	}
 
 	const prompt = url.searchParams.get("prompt");
@@ -91,13 +96,13 @@ export async function GET(req: Request): Promise<Response> {
 		if (stateParam) {
 			dest.searchParams.set("state", stateParam);
 		}
-		return new Response(null, { status: 302, headers: { Location: dest.toString() } });
+		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
 	}
 
 	if (!sessionUserId || prompt === "login") {
 		const loginUrl = new URL("/login", url.origin);
 		loginUrl.searchParams.set("redirect", url.pathname + url.search);
-		return new Response(null, { status: 302, headers: { Location: loginUrl.toString() } });
+		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: loginUrl.toString() } }));
 	}
 
 	if (maxAge && sessionIdVal) {
@@ -110,7 +115,7 @@ export async function GET(req: Request): Promise<Response> {
 		if (sessionRow && Date.now() - sessionRow.createdAt.getTime() > parseInt(maxAge, 10) * 1000) {
 			const loginUrl = new URL("/login", url.origin);
 			loginUrl.searchParams.set("redirect", url.pathname + url.search);
-			return new Response(null, { status: 302, headers: { Location: loginUrl.toString() } });
+			return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: loginUrl.toString() } }));
 		}
 	}
 
@@ -133,5 +138,5 @@ export async function GET(req: Request): Promise<Response> {
 		dest.searchParams.set("state", stateParam);
 	}
 
-	return new Response(null, { status: 302, headers: { Location: dest.toString() } });
+	return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
 }

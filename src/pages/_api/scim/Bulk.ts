@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { createUser, updateUser, deleteUser, createGroup, deleteGroup } from "@/lib/scim";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
@@ -78,8 +79,10 @@ export async function POST(req: Request): Promise<Response> {
 		}
 	}
 
-	return Response.json({
-		schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkResponse"],
-		Operations: results,
-	});
+	return withSecurityHeaders(
+		Response.json({
+			schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkResponse"],
+			Operations: results,
+		}),
+	);
 }

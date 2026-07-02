@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { count, gte } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -24,11 +25,13 @@ export async function GET(req: Request): Promise<Response> {
 		.where(gte(schema.oauthAccessToken.expiresAt, new Date()));
 	const [patCount] = await db.select({ value: count() }).from(schema.personalAccessToken);
 
-	return Response.json({
-		users: { total: userCount?.value ?? 0 },
-		sessions: { active30d: sessionCount?.value ?? 0 },
-		clients: { total: clientCount?.value ?? 0 },
-		tokens: { active: activeTokenCount?.value ?? 0 },
-		personalAccessTokens: { total: patCount?.value ?? 0 },
-	});
+	return withSecurityHeaders(
+		Response.json({
+			users: { total: userCount?.value ?? 0 },
+			sessions: { active30d: sessionCount?.value ?? 0 },
+			clients: { total: clientCount?.value ?? 0 },
+			tokens: { active: activeTokenCount?.value ?? 0 },
+			personalAccessTokens: { total: patCount?.value ?? 0 },
+		}),
+	);
 }

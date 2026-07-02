@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -21,11 +22,11 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		.where(and(eq(schema.session.id, sessionId), eq(schema.session.userId, authed.userId)));
 
 	if (!session) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
 	if (authed.sessionToken !== null && session.token === authed.sessionToken) {
-		return Response.json({ error: "cannot_revoke_current_session" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "cannot_revoke_current_session" }, { status: 400 }));
 	}
 
 	await Promise.all([
@@ -36,5 +37,5 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		cache.delete(sessionKey(session.token)),
 	]);
 
-	return new Response(null, { status: 204 });
+	return withSecurityHeaders(new Response(null, { status: 204 }));
 }

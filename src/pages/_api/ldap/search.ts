@@ -1,10 +1,11 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { searchUsers, searchGroups, getDefaultServerConfig } from "@/lib/ldap";
 import { getAccountUser } from "@/pages/_api/account/auth";
 
 export async function POST(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
 	if (!authed) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "unauthorized" }, { status: 401 }));
 	}
 
 	const body = (await req.json()) as Record<string, unknown>;
@@ -21,11 +22,15 @@ export async function POST(req: Request): Promise<Response> {
 			entries = await searchUsers(config.domain);
 		}
 
-		return Response.json({
-			totalResults: entries.length,
-			entries,
-		});
+		return withSecurityHeaders(
+			Response.json({
+				totalResults: entries.length,
+				entries,
+			}),
+		);
 	} catch (e) {
-		return Response.json({ error: e instanceof Error ? e.message : "search_failed" }, { status: 500 });
+		return withSecurityHeaders(
+			Response.json({ error: e instanceof Error ? e.message : "search_failed" }, { status: 500 }),
+		);
 	}
 }

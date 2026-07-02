@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -18,23 +19,25 @@ export async function POST(req: Request): Promise<Response> {
 	const tokenEndpointAuthMethod = body.token_endpoint_auth_method as string | undefined;
 
 	if (!clientName || !redirectUris?.length) {
-		return Response.json({ error: "invalid_client_metadata" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_client_metadata" }, { status: 400 }));
 	}
 
 	for (const uri of redirectUris) {
 		try {
 			const parsed = new URL(uri);
 			if (parsed.hash) {
-				return Response.json(
-					{ error: "invalid_redirect_uri", error_description: "Redirect URI must not contain a fragment" },
-					{ status: 400 },
+				return withSecurityHeaders(
+					Response.json(
+						{ error: "invalid_redirect_uri", error_description: "Redirect URI must not contain a fragment" },
+						{ status: 400 },
+					),
 				);
 			}
 			if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-				return Response.json({ error: "invalid_redirect_uri" }, { status: 400 });
+				return withSecurityHeaders(Response.json({ error: "invalid_redirect_uri" }, { status: 400 }));
 			}
 		} catch {
-			return Response.json({ error: "invalid_redirect_uri" }, { status: 400 });
+			return withSecurityHeaders(Response.json({ error: "invalid_redirect_uri" }, { status: 400 }));
 		}
 	}
 
@@ -58,20 +61,22 @@ export async function POST(req: Request): Promise<Response> {
 		.returning();
 
 	if (!inserted) {
-		return Response.json({ error: "server_error" }, { status: 500 });
+		return withSecurityHeaders(Response.json({ error: "server_error" }, { status: 500 }));
 	}
 
-	return Response.json(
-		{
-			client_id: inserted.clientId,
-			client_secret: secret,
-			client_name: inserted.name,
-			redirect_uris: inserted.redirectUris?.split(",") ?? [],
-			grant_types: inserted.grants?.split(",") ?? ["authorization_code"],
-			token_endpoint_auth_method: inserted.tokenEndpointAuthMethod ?? "client_secret_basic",
-			client_id_issued_at: Math.floor((inserted.clientIdIssuedAt ?? new Date()).getTime() / 1000),
-			client_secret_expires_at: 0,
-		},
-		{ status: 201 },
+	return withSecurityHeaders(
+		Response.json(
+			{
+				client_id: inserted.clientId,
+				client_secret: secret,
+				client_name: inserted.name,
+				redirect_uris: inserted.redirectUris?.split(",") ?? [],
+				grant_types: inserted.grants?.split(",") ?? ["authorization_code"],
+				token_endpoint_auth_method: inserted.tokenEndpointAuthMethod ?? "client_secret_basic",
+				client_id_issued_at: Math.floor((inserted.clientIdIssuedAt ?? new Date()).getTime() / 1000),
+				client_secret_expires_at: 0,
+			},
+			{ status: 201 },
+		),
 	);
 }

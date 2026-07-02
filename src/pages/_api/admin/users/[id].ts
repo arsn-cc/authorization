@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -44,10 +45,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 		.where(eq(schema.user.id, Number(params.id)));
 
 	if (!user) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	return Response.json(user);
+	return withSecurityHeaders(Response.json(user));
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -118,10 +119,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	});
 
 	if (!updated) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	return Response.json(updated);
+	return withSecurityHeaders(Response.json(updated));
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -148,5 +149,5 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		...sessions.map((s) => cache.delete(sessionKey(s.token))),
 	]);
 
-	return new Response(null, { status: 204 });
+	return withSecurityHeaders(new Response(null, { status: 204 }));
 }

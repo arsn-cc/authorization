@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -8,14 +9,14 @@ export async function GET(req: Request): Promise<Response> {
 	const entityId = url.searchParams.get("entity_id");
 
 	if (!entityId) {
-		return Response.json({ error: "missing_entity_id" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_entity_id" }, { status: 400 }));
 	}
 
 	const db = await getDb();
 	const [client] = await db.select().from(schema.client).where(eq(schema.client.clientId, entityId));
 
 	if (!client) {
-		return Response.json({ error: "unknown_service_provider" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "unknown_service_provider" }, { status: 400 }));
 	}
 
 	const config = {
@@ -30,8 +31,10 @@ export async function GET(req: Request): Promise<Response> {
 
 	const metadata = generateSamlMetadata(config);
 
-	return new Response(metadata, {
-		status: 200,
-		headers: { "content-type": "application/xml; charset=utf-8" },
-	});
+	return withSecurityHeaders(
+		new Response(metadata, {
+			status: 200,
+			headers: { "content-type": "application/xml; charset=utf-8" },
+		}),
+	);
 }

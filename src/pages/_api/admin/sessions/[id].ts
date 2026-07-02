@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -19,7 +20,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		.where(eq(schema.session.id, Number(params.id)));
 
 	if (!session) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
 	await Promise.all([
@@ -30,5 +31,5 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		cache.delete(sessionKey(session.token)),
 	]);
 
-	return new Response(null, { status: 204 });
+	return withSecurityHeaders(new Response(null, { status: 204 }));
 }

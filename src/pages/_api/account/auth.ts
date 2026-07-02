@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -75,5 +76,5 @@ export async function getAccountUser(req: Request): Promise<AuthenticatedUser | 
 }
 
 export function unauthorized(): Response {
-	return Response.json({ error: "unauthorized" }, { status: 401 });
+	return withSecurityHeaders(Response.json({ error: "unauthorized" }, { status: 401 }));
 }

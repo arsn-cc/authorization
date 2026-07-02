@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -16,9 +17,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 		.where(eq(schema.role.id, Number(params.id)));
 
 	if (!role) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
-	return Response.json(role);
+	return withSecurityHeaders(Response.json(role));
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -48,9 +49,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		.returning({ id: schema.role.id, name: schema.role.name });
 
 	if (!updated) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
-	return Response.json(updated);
+	return withSecurityHeaders(Response.json(updated));
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -63,7 +64,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 	const { rowCount } = await db.delete(schema.role).where(eq(schema.role.id, Number(params.id)));
 
 	if (!rowCount) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
-	return new Response(null, { status: 204 });
+	return withSecurityHeaders(new Response(null, { status: 204 }));
 }

@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { count, eq, and, gte, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -40,5 +41,7 @@ export async function GET(req: Request): Promise<Response> {
 		.limit(perPage)
 		.offset((page - 1) * perPage);
 
-	return Response.json({ data: sessions, total, page, perPage, totalPages: Math.ceil(total / perPage) });
+	return withSecurityHeaders(
+		Response.json({ data: sessions, total, page, perPage, totalPages: Math.ceil(total / perPage) }),
+	);
 }

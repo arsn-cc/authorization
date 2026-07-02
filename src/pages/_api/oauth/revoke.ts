@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -25,12 +26,12 @@ export async function POST(req: Request): Promise<Response> {
 	const clientSecret = (form.get("client_secret") as string | undefined) ?? clientSecretFromBasicAuth(req);
 
 	if (!token || !clientId) {
-		return Response.json({ error: "invalid_request" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
 	}
 
 	const client = await authenticateClient(clientId, clientSecret);
 	if (!client) {
-		return Response.json({ error: "invalid_client" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "invalid_client" }, { status: 401 }));
 	}
 
 	const db = await getDb();
@@ -47,5 +48,5 @@ export async function POST(req: Request): Promise<Response> {
 		deleteCachedOAuthRefreshToken(token),
 	]);
 
-	return new Response(null, { status: 200 });
+	return withSecurityHeaders(new Response(null, { status: 200 }));
 }

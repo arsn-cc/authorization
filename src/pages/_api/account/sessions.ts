@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq, and, gte, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -44,5 +45,5 @@ export async function GET(req: Request): Promise<Response> {
 		isCurrent: authed.sessionToken !== null && s.isCurrent === authed.sessionToken,
 	}));
 
-	return Response.json({ data: result });
+	return withSecurityHeaders(Response.json({ data: result }));
 }

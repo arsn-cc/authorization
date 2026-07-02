@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -16,11 +17,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 		.where(eq(schema.client.id, Number(params.id)));
 
 	if (!client) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
 	const { clientSecret: _secret, ...safe } = client;
-	return Response.json(safe);
+	return withSecurityHeaders(Response.json(safe));
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -78,10 +79,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		.returning({ id: schema.client.id, clientId: schema.client.clientId, name: schema.client.name });
 
 	if (!updated) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	return Response.json(updated);
+	return withSecurityHeaders(Response.json(updated));
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -94,7 +95,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 	const { rowCount } = await db.delete(schema.client).where(eq(schema.client.id, Number(params.id)));
 
 	if (!rowCount) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
-	return new Response(null, { status: 204 });
+	return withSecurityHeaders(new Response(null, { status: 204 }));
 }

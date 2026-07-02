@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { authenticateClient, getTokenIntrospection } from "@/lib/oauth";
 
 function clientCredentialsFromBasicAuth(req: Request): { clientId: string; clientSecret: string } | null {
@@ -18,7 +19,7 @@ export async function POST(req: Request): Promise<Response> {
 	const token = form.get("token") as string;
 
 	if (!token) {
-		return Response.json({ error: "invalid_request" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
 	}
 
 	const formClientId = form.get("client_id") as string | undefined;
@@ -29,14 +30,14 @@ export async function POST(req: Request): Promise<Response> {
 	const clientSecret = formClientSecret ?? basic?.clientSecret;
 
 	if (!clientId) {
-		return Response.json({ error: "invalid_client" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "invalid_client" }, { status: 401 }));
 	}
 
 	const client = await authenticateClient(clientId, clientSecret);
 	if (!client) {
-		return Response.json({ error: "invalid_client" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "invalid_client" }, { status: 401 }));
 	}
 
 	const result = await getTokenIntrospection(token, clientId);
-	return Response.json(result);
+	return withSecurityHeaders(Response.json(result));
 }

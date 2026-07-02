@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { randomBytes } from "node:crypto";
 import { count, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
@@ -10,12 +11,12 @@ export async function POST(req: Request): Promise<Response> {
 	const scope = (form.get("scope") as string) ?? "";
 
 	if (!clientId) {
-		return Response.json({ error: "invalid_request" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
 	}
 
 	const client = await getClientById(clientId);
 	if (!client) {
-		return Response.json({ error: "unauthorized_client" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "unauthorized_client" }, { status: 400 }));
 	}
 
 	const db = await getDb();
@@ -23,7 +24,7 @@ export async function POST(req: Request): Promise<Response> {
 	const [total] = await db.select({ value: count() }).from(schema.client).where(eq(schema.client.type, "device_grant"));
 
 	if ((total?.value ?? 0) >= 100) {
-		return Response.json({ error: "too_many_requests" }, { status: 429 });
+		return withSecurityHeaders(Response.json({ error: "too_many_requests" }, { status: 429 }));
 	}
 
 	const deviceCode = randomBytes(32).toString("hex");
@@ -41,12 +42,14 @@ export async function POST(req: Request): Promise<Response> {
 		accessTokenTtl: expiresIn,
 	});
 
-	return Response.json({
-		device_code: deviceCode,
-		user_code: userCode,
-		verification_uri: verificationUri,
-		verification_uri_complete: `${verificationUri}?user_code=${userCode}`,
-		expires_in: expiresIn,
-		interval: 5,
-	});
+	return withSecurityHeaders(
+		Response.json({
+			device_code: deviceCode,
+			user_code: userCode,
+			verification_uri: verificationUri,
+			verification_uri_complete: `${verificationUri}?user_code=${userCode}`,
+			expires_in: expiresIn,
+			interval: 5,
+		}),
+	);
 }

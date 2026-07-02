@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -43,19 +44,23 @@ async function handleLogout(req: Request): Promise<Response> {
 					relayState ? `<input type='hidden' name='RelayState' value='${relayState}'/>` : "",
 					"</form></body></html>",
 				].join("");
-				return new Response(formHtml, {
-					status: 200,
-					headers: { "content-type": "text/html; charset=utf-8" },
-				});
+				return withSecurityHeaders(
+					new Response(formHtml, {
+						status: 200,
+						headers: { "content-type": "text/html; charset=utf-8" },
+					}),
+				);
 			}
 		}
 	}
 
-	return new Response(null, {
-		status: 302,
-		headers: {
-			Location: "https://arsn.cc",
-			"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
-		},
-	});
+	return withSecurityHeaders(
+		new Response(null, {
+			status: 302,
+			headers: {
+				Location: "https://arsn.cc",
+				"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+			},
+		}),
+	);
 }

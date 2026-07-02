@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -28,14 +29,16 @@ export async function GET(req: Request): Promise<Response> {
 		.where(eq(schema.user.id, authed.userId));
 
 	if (!user) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	return Response.json({
-		enabled: Boolean(user.totpEnabled),
-		hasSecret: Boolean(user.totpSecret),
-		hasBackupCodes: Boolean(user.totpBackupCodes && JSON.parse(user.totpBackupCodes).length > 0),
-	});
+	return withSecurityHeaders(
+		Response.json({
+			enabled: Boolean(user.totpEnabled),
+			hasSecret: Boolean(user.totpSecret),
+			hasBackupCodes: Boolean(user.totpBackupCodes && JSON.parse(user.totpBackupCodes).length > 0),
+		}),
+	);
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -51,7 +54,7 @@ export async function POST(req: Request): Promise<Response> {
 		.where(eq(schema.user.id, authed.userId));
 
 	if (!user) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
 	const secret = generateTotpSecret();
@@ -64,7 +67,7 @@ export async function POST(req: Request): Promise<Response> {
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
 
-	return Response.json({ secret, uri });
+	return withSecurityHeaders(Response.json({ secret, uri }));
 }
 
 export async function PUT(req: Request): Promise<Response> {
@@ -75,7 +78,7 @@ export async function PUT(req: Request): Promise<Response> {
 
 	const body = (await req.json()) as { code: string };
 	if (!body.code) {
-		return Response.json({ error: "Verification code is required" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "Verification code is required" }, { status: 400 }));
 	}
 
 	const db = await getDb();
@@ -85,11 +88,11 @@ export async function PUT(req: Request): Promise<Response> {
 		.where(eq(schema.user.id, authed.userId));
 
 	if (!user || !user.totpSecret) {
-		return Response.json({ error: "TOTP not initialized" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "TOTP not initialized" }, { status: 400 }));
 	}
 
 	if (!verifyTotpCode(user.totpSecret, body.code)) {
-		return Response.json({ error: "Invalid code" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "Invalid code" }, { status: 400 }));
 	}
 
 	const backupCodes = generateBackupCodes();
@@ -102,7 +105,7 @@ export async function PUT(req: Request): Promise<Response> {
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
 
-	return Response.json({ enabled: true, backupCodes });
+	return withSecurityHeaders(Response.json({ enabled: true, backupCodes }));
 }
 
 export async function DELETE(req: Request): Promise<Response> {
@@ -119,5 +122,5 @@ export async function DELETE(req: Request): Promise<Response> {
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
 
-	return Response.json({ enabled: false });
+	return withSecurityHeaders(Response.json({ enabled: false }));
 }

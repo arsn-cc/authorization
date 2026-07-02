@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { count, ilike, or, asc, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -35,7 +36,9 @@ export async function GET(req: Request): Promise<Response> {
 		.limit(perPage)
 		.offset((page - 1) * perPage);
 
-	return Response.json({ data: permissions, total, page, perPage, totalPages: Math.ceil(total / perPage) });
+	return withSecurityHeaders(
+		Response.json({ data: permissions, total, page, perPage, totalPages: Math.ceil(total / perPage) }),
+	);
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -46,7 +49,7 @@ export async function POST(req: Request): Promise<Response> {
 
 	const body = (await req.json()) as Record<string, unknown>;
 	if (!body.name) {
-		return Response.json({ error: "missing_name" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_name" }, { status: 400 }));
 	}
 
 	const db = await getDb();
@@ -58,5 +61,5 @@ export async function POST(req: Request): Promise<Response> {
 		})
 		.returning({ id: schema.permission.id, name: schema.permission.name });
 
-	return Response.json(inserted, { status: 201 });
+	return withSecurityHeaders(Response.json(inserted, { status: 201 }));
 }

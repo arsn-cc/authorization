@@ -1,10 +1,11 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { authenticateUser, RADIUS_CODE, type RadiusConfig } from "@/lib/radius";
 import { getAccountUser } from "@/pages/_api/account/auth";
 
 export async function POST(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
 	if (!authed) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "unauthorized" }, { status: 401 }));
 	}
 
 	const body = (await req.json()) as {
@@ -16,7 +17,7 @@ export async function POST(req: Request): Promise<Response> {
 	};
 
 	if (!body.username || !body.password) {
-		return Response.json({ error: "missing_credentials" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_credentials" }, { status: 400 }));
 	}
 
 	const config: RadiusConfig = {
@@ -40,10 +41,14 @@ export async function POST(req: Request): Promise<Response> {
 			config,
 		);
 
-		return Response.json({
-			status: result.success ? "Access-Accept" : "Access-Reject",
-		});
+		return withSecurityHeaders(
+			Response.json({
+				status: result.success ? "Access-Accept" : "Access-Reject",
+			}),
+		);
 	} catch (e) {
-		return Response.json({ error: e instanceof Error ? e.message : "authentication_failed" }, { status: 500 });
+		return withSecurityHeaders(
+			Response.json({ error: e instanceof Error ? e.message : "authentication_failed" }, { status: 500 }),
+		);
 	}
 }

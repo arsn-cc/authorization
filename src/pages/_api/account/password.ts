@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { and, eq, not } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -18,11 +19,11 @@ export async function POST(req: Request): Promise<Response> {
 	const newPassword = body.newPassword;
 
 	if (!currentPassword || !newPassword) {
-		return Response.json({ error: "current_password_and_new_password_required" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "current_password_and_new_password_required" }, { status: 400 }));
 	}
 
 	if (!isValidPassword(newPassword)) {
-		return Response.json({ error: "new_password_insufficient_complexity" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "new_password_insufficient_complexity" }, { status: 400 }));
 	}
 
 	const db = await getDb();
@@ -32,11 +33,11 @@ export async function POST(req: Request): Promise<Response> {
 		.where(eq(schema.user.id, authed.userId));
 
 	if (!user || !user.passwordHash) {
-		return Response.json({ error: "password_not_set" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "password_not_set" }, { status: 400 }));
 	}
 
 	if (!verifyPassword(currentPassword, user.passwordHash)) {
-		return Response.json({ error: "current_password_incorrect" }, { status: 403 });
+		return withSecurityHeaders(Response.json({ error: "current_password_incorrect" }, { status: 403 }));
 	}
 
 	const now = new Date();
@@ -67,8 +68,10 @@ export async function POST(req: Request): Promise<Response> {
 
 	const terminatedCount = sessions.filter((s) => s.token !== currentToken).length;
 
-	return Response.json({
-		message: "password_updated",
-		sessionsTerminated: terminatedCount,
-	});
+	return withSecurityHeaders(
+		Response.json({
+			message: "password_updated",
+			sessionsTerminated: terminatedCount,
+		}),
+	);
 }

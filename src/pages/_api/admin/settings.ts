@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -12,7 +13,7 @@ export async function GET(req: Request): Promise<Response> {
 	}
 
 	const settings = await getSettings();
-	return Response.json(settings);
+	return withSecurityHeaders(Response.json(settings));
 }
 
 export async function PATCH(req: Request): Promise<Response> {
@@ -39,5 +40,5 @@ export async function PATCH(req: Request): Promise<Response> {
 		}
 	}
 
-	return Response.json(updated);
+	return withSecurityHeaders(Response.json(updated));
 }

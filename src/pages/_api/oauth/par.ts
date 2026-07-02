@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { randomBytes } from "node:crypto";
 import {
 	generateAuthorizationCode,
@@ -33,20 +34,20 @@ export async function POST(req: Request): Promise<Response> {
 	const nonceParam = form.get("nonce") as string | null;
 
 	if (!clientId || !redirectUri) {
-		return Response.json({ error: "invalid_request" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
 	}
 
 	const client = await authenticateClient(clientId, clientSecret);
 	if (!client) {
-		return Response.json({ error: "unauthorized_client" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "unauthorized_client" }, { status: 400 }));
 	}
 
 	if (!validateRedirectUri(client, redirectUri)) {
-		return Response.json({ error: "invalid_redirect_uri" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_redirect_uri" }, { status: 400 }));
 	}
 
 	if (scope && !scope.split(" ").every((s) => client.scopes.split(" ").includes(s))) {
-		return Response.json({ error: "invalid_scope" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_scope" }, { status: 400 }));
 	}
 
 	const cookie = req.headers.get("cookie") ?? "";
@@ -60,10 +61,10 @@ export async function POST(req: Request): Promise<Response> {
 			userId = session.data.userId;
 			sessionId = session.data.sessionId;
 		} else {
-			return Response.json({ error: "login_required" }, { status: 401 });
+			return withSecurityHeaders(Response.json({ error: "login_required" }, { status: 401 }));
 		}
 	} else {
-		return Response.json({ error: "login_required" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "login_required" }, { status: 401 }));
 	}
 
 	const authRequest: AuthorizationRequest = {
@@ -81,8 +82,10 @@ export async function POST(req: Request): Promise<Response> {
 
 	await generateAuthorizationCode(authRequest, userId, sessionId);
 
-	return Response.json({
-		request_uri: `urn:ietf:params:oauth:request_uri:${randomBytes(16).toString("hex")}`,
-		expires_in: 600,
-	});
+	return withSecurityHeaders(
+		Response.json({
+			request_uri: `urn:ietf:params:oauth:request_uri:${randomBytes(16).toString("hex")}`,
+			expires_in: 600,
+		}),
+	);
 }

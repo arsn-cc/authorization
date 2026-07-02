@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import {
 	exchangeAuthorizationCode,
 	exchangeClientCredentials,
@@ -19,17 +20,19 @@ export async function POST(req: Request): Promise<Response> {
 	const contentType = req.headers.get("content-type") ?? "";
 
 	if (contentType.includes("application/json")) {
-		return Response.json(
-			{
-				error: "invalid_request",
-				error_description: "JSON content type not accepted. Use application/x-www-form-urlencoded.",
-			},
-			{ status: 400 },
+		return withSecurityHeaders(
+			Response.json(
+				{
+					error: "invalid_request",
+					error_description: "JSON content type not accepted. Use application/x-www-form-urlencoded.",
+				},
+				{ status: 400 },
+			),
 		);
 	}
 
 	if (!contentType.includes("application/x-www-form-urlencoded")) {
-		return Response.json({ error: "invalid_request" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
 	}
 
 	const form = await req.formData();
@@ -83,7 +86,7 @@ export async function POST(req: Request): Promise<Response> {
 				response = await exchangeRefreshToken(tokenRequest);
 				break;
 			default:
-				return Response.json({ error: "unsupported_grant_type" }, { status: 400 });
+				return withSecurityHeaders(Response.json({ error: "unsupported_grant_type" }, { status: 400 }));
 		}
 
 		const result: Record<string, string | number> = {
@@ -100,9 +103,9 @@ export async function POST(req: Request): Promise<Response> {
 		if (response.idToken) {
 			result.id_token = response.idToken;
 		}
-		return Response.json(result);
+		return withSecurityHeaders(Response.json(result));
 	} catch (e) {
 		const message = e instanceof Error ? e.message : "server_error";
-		return Response.json({ error: message }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: message }, { status: 400 }));
 	}
 }

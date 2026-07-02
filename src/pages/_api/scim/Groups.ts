@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { listGroups, createGroup, type ScimSearchParams } from "@/lib/scim";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
@@ -18,7 +19,7 @@ export async function GET(req: Request): Promise<Response> {
 		...(filterParam ? { filter: filterParam } : {}),
 	};
 	const groups = await listGroups(params);
-	return Response.json(groups);
+	return withSecurityHeaders(Response.json(groups));
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -29,5 +30,5 @@ export async function POST(req: Request): Promise<Response> {
 
 	const body = (await req.json()) as Record<string, unknown>;
 	const group = await createGroup(body as Parameters<typeof createGroup>[0]);
-	return Response.json(group, { status: 201 });
+	return withSecurityHeaders(Response.json(group, { status: 201 }));
 }

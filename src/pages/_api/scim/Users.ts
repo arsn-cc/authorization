@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { listUsers, createUser, type ScimSearchParams } from "@/lib/scim";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
@@ -18,7 +19,7 @@ export async function GET(req: Request): Promise<Response> {
 		...(filterParam ? { filter: filterParam } : {}),
 	};
 	const users = await listUsers(params);
-	return Response.json(users);
+	return withSecurityHeaders(Response.json(users));
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -29,5 +30,5 @@ export async function POST(req: Request): Promise<Response> {
 
 	const body = (await req.json()) as Record<string, unknown>;
 	const user = await createUser(body as Parameters<typeof createUser>[0]);
-	return Response.json(user, { status: 201 });
+	return withSecurityHeaders(Response.json(user, { status: 201 }));
 }

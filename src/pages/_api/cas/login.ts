@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -8,14 +9,14 @@ export async function GET(req: Request): Promise<Response> {
 	const service = url.searchParams.get("service");
 
 	if (!service) {
-		return Response.json({ error: "missing_service_parameter" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_service_parameter" }, { status: 400 }));
 	}
 
 	try {
 		const _parsed = new URL(service);
 		void _parsed;
 	} catch {
-		return Response.json({ error: "invalid_service_parameter" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_service_parameter" }, { status: 400 }));
 	}
 
 	const db = await getDb();
@@ -27,9 +28,9 @@ export async function GET(req: Request): Promise<Response> {
 	const allowedUris = clients.flatMap((c) => (c.redirectUris ?? "").split(",").map((u) => u.trim())).filter(Boolean);
 
 	if (allowedUris.length > 0 && !allowedUris.includes(service)) {
-		return Response.json({ error: "unauthorized_service" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "unauthorized_service" }, { status: 400 }));
 	}
 
 	const loginUrl = createLoginUrl({ service: encodeURIComponent(service) });
-	return new Response(null, { status: 302, headers: { Location: loginUrl } });
+	return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: loginUrl } }));
 }

@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -17,8 +18,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		.returning({ id: schema.personalAccessToken.id, revokedAt: schema.personalAccessToken.revokedAt });
 
 	if (!updated) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	return Response.json(updated);
+	return withSecurityHeaders(Response.json(updated));
 }

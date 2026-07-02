@@ -1,5 +1,6 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { getScimResourceTypes } from "@/lib/scim";
 
 export async function GET(): Promise<Response> {
-	return Response.json(getScimResourceTypes());
+	return withSecurityHeaders(Response.json(getScimResourceTypes()));
 }

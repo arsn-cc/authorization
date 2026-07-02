@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { verifyLdapUserBind } from "@/lib/ldap";
 
 export async function POST(req: Request): Promise<Response> {
@@ -6,13 +7,13 @@ export async function POST(req: Request): Promise<Response> {
 	const password = body.password;
 
 	if (!username || !password) {
-		return Response.json({ error: "missing_credentials" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_credentials" }, { status: 400 }));
 	}
 
 	const valid = await verifyLdapUserBind(username, password);
 	if (!valid) {
-		return Response.json({ error: "invalid_credentials" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "invalid_credentials" }, { status: 401 }));
 	}
 
-	return Response.json({ status: "success" });
+	return withSecurityHeaders(Response.json({ status: "success" }));
 }

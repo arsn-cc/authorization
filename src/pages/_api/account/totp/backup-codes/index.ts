@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -18,16 +19,18 @@ export async function GET(req: Request): Promise<Response> {
 		.where(eq(schema.user.id, authed.userId));
 
 	if (!user) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
 	if (!user.totpBackupCodes) {
-		return Response.json({ codes: [] });
+		return withSecurityHeaders(Response.json({ codes: [] }));
 	}
 
 	// We can't return the original codes since they're hashed
 	const count = JSON.parse(user.totpBackupCodes).length;
-	return Response.json({ codeCount: count, message: "Backup codes are only shown once upon generation" });
+	return withSecurityHeaders(
+		Response.json({ codeCount: count, message: "Backup codes are only shown once upon generation" }),
+	);
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -47,5 +50,5 @@ export async function POST(req: Request): Promise<Response> {
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
 
-	return Response.json({ codes: backupCodes });
+	return withSecurityHeaders(Response.json({ codes: backupCodes }));
 }

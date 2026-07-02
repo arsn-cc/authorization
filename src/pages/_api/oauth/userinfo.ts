@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { getUserInfo } from "@/lib/oauth";
 
 function parseAuthHeader(req: Request): string | null {
@@ -20,13 +21,13 @@ export async function POST(req: Request): Promise<Response> {
 async function handleUserinfo(req: Request): Promise<Response> {
 	const accessToken = parseAuthHeader(req);
 	if (!accessToken) {
-		return Response.json({ error: "invalid_token" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "invalid_token" }, { status: 401 }));
 	}
 
 	const info = await getUserInfo(accessToken);
 	if (!info) {
-		return Response.json({ error: "invalid_token" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "invalid_token" }, { status: 401 }));
 	}
 
-	return Response.json(info);
+	return withSecurityHeaders(Response.json(info));
 }

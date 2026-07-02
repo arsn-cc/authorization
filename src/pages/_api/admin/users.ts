@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { count, eq, ilike, or, asc, desc, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -56,7 +57,9 @@ export async function GET(req: Request): Promise<Response> {
 		.limit(perPage)
 		.offset((page - 1) * perPage);
 
-	return Response.json({ data: users, total, page, perPage, totalPages: Math.ceil(total / perPage) });
+	return withSecurityHeaders(
+		Response.json({ data: users, total, page, perPage, totalPages: Math.ceil(total / perPage) }),
+	);
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -71,10 +74,10 @@ export async function POST(req: Request): Promise<Response> {
 	const name = body.name;
 
 	if (!username || !isValidUsername(username)) {
-		return Response.json({ error: "invalid_username" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_username" }, { status: 400 }));
 	}
 	if (!password || password.length < 8) {
-		return Response.json({ error: "password_too_short" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "password_too_short" }, { status: 400 }));
 	}
 
 	const email = usernameToEmail(username);
@@ -86,7 +89,7 @@ export async function POST(req: Request): Promise<Response> {
 		.where(or(eq(schema.user.username, username), eq(schema.user.email, email)))
 		.limit(1);
 	if (existing) {
-		return Response.json({ error: "user_exists" }, { status: 409 });
+		return withSecurityHeaders(Response.json({ error: "user_exists" }, { status: 409 }));
 	}
 
 	const [inserted] = await db
@@ -107,5 +110,5 @@ export async function POST(req: Request): Promise<Response> {
 			createdAt: schema.user.createdAt,
 		});
 
-	return Response.json(inserted, { status: 201 });
+	return withSecurityHeaders(Response.json(inserted, { status: 201 }));
 }

@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { getUser, updateUser, deleteUser } from "@/lib/scim";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
 
@@ -9,12 +10,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 
 	const user = await getUser(Number(params.id));
 	if (!user) {
-		return Response.json(
-			{ schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"], detail: "User not found", status: 404 },
-			{ status: 404 },
+		return withSecurityHeaders(
+			Response.json(
+				{ schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"], detail: "User not found", status: 404 },
+				{ status: 404 },
+			),
 		);
 	}
-	return Response.json(user);
+	return withSecurityHeaders(Response.json(user));
 }
 
 export async function PUT(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -25,7 +28,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }):
 
 	const body = (await req.json()) as Record<string, unknown>;
 	const user = await updateUser(Number(params.id), body as Parameters<typeof updateUser>[1]);
-	return Response.json(user);
+	return withSecurityHeaders(Response.json(user));
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -40,10 +43,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		| undefined;
 	if (operations) {
 		const user = await updateUser(Number(params.id), { operations } as Parameters<typeof updateUser>[1]);
-		return Response.json(user);
+		return withSecurityHeaders(Response.json(user));
 	}
 	const user = await updateUser(Number(params.id), body as Parameters<typeof updateUser>[1]);
-	return Response.json(user);
+	return withSecurityHeaders(Response.json(user));
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -53,5 +56,5 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 	}
 
 	await deleteUser(Number(params.id));
-	return new Response(null, { status: 204 });
+	return withSecurityHeaders(new Response(null, { status: 204 }));
 }

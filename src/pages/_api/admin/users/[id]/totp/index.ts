@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -21,7 +22,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 		.where(eq(schema.user.id, userId));
 
 	if (!user) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
 	// Revoke all active sessions since TOTP reset is a security event
@@ -45,5 +46,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
 	await invalidateUser({ id: user.id, username: user.username, email: user.email });
 
-	return Response.json({ success: true });
+	return withSecurityHeaders(Response.json({ success: true }));
 }

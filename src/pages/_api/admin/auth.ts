@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -111,24 +112,26 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 export async function requirePermission(req: Request, permission: AdminPermission): Promise<AdminUser | Response> {
 	const admin = await getAdminUser(req);
 	if (!admin) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
+		return withSecurityHeaders(Response.json({ error: "unauthorized" }, { status: 401 }));
 	}
 
 	if (admin.user.roleId === null) {
-		return Response.json({ error: "forbidden", message: "no role assigned" }, { status: 403 });
+		return withSecurityHeaders(Response.json({ error: "forbidden", message: "no role assigned" }, { status: 403 }));
 	}
 
 	const role = await getRoleById(admin.user.roleId);
 
 	if (!role) {
-		return Response.json({ error: "forbidden", message: "role not found" }, { status: 403 });
+		return withSecurityHeaders(Response.json({ error: "forbidden", message: "role not found" }, { status: 403 }));
 	}
 
 	let rolePermissions: string[];
 	try {
 		const parsed = JSON.parse(role.permissions);
 		if (!Array.isArray(parsed) || !parsed.every((p): p is string => typeof p === "string")) {
-			return Response.json({ error: "forbidden", message: "invalid permissions" }, { status: 403 });
+			return withSecurityHeaders(
+				Response.json({ error: "forbidden", message: "invalid permissions" }, { status: 403 }),
+			);
 		}
 		rolePermissions = parsed;
 	} catch {
@@ -136,13 +139,15 @@ export async function requirePermission(req: Request, permission: AdminPermissio
 	}
 
 	if (!rolePermissions.includes(permission)) {
-		return Response.json(
-			{
-				error: "forbidden",
-				message: `missing permission: ${permission}`,
-				required: permission,
-			},
-			{ status: 403 },
+		return withSecurityHeaders(
+			Response.json(
+				{
+					error: "forbidden",
+					message: `missing permission: ${permission}`,
+					required: permission,
+				},
+				{ status: 403 },
+			),
 		);
 	}
 

@@ -1,3 +1,4 @@
+import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -25,19 +26,19 @@ async function handleSso(req: Request): Promise<Response> {
 	const relayState = url.searchParams.get("RelayState") ?? undefined;
 
 	if (!samlRequestB64) {
-		return Response.json({ error: "missing_saml_request" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_saml_request" }, { status: 400 }));
 	}
 
 	const entityId = url.searchParams.get("entity_id");
 	if (!entityId) {
-		return Response.json({ error: "missing_entity_id" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_entity_id" }, { status: 400 }));
 	}
 
 	const db = await getDb();
 	const [client] = await db.select().from(schema.client).where(eq(schema.client.clientId, entityId));
 
 	if (!client) {
-		return Response.json({ error: "unknown_service_provider" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "unknown_service_provider" }, { status: 400 }));
 	}
 
 	const decoded = decodeSamlRequest(samlRequestB64);
@@ -51,14 +52,14 @@ async function handleSso(req: Request): Promise<Response> {
 
 	const validationResult = validateAuthnRequest(config, decoded);
 	if (!validationResult.valid) {
-		return Response.json({ error: "invalid_authn_request" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "invalid_authn_request" }, { status: 400 }));
 	}
 
 	const sigAlgParam = url.searchParams.get("SigAlg");
 	const signatureParam = url.searchParams.get("Signature");
 	const requireSignature = Boolean(client.samlCertificate);
 	if (requireSignature && (!sigAlgParam || !signatureParam)) {
-		return Response.json({ error: "missing_authn_request_signature" }, { status: 400 });
+		return withSecurityHeaders(Response.json({ error: "missing_authn_request_signature" }, { status: 400 }));
 	}
 	if (sigAlgParam && signatureParam) {
 		if (
@@ -70,7 +71,7 @@ async function handleSso(req: Request): Promise<Response> {
 				client.samlCertificate ?? "",
 			)
 		) {
-			return Response.json({ error: "invalid_authn_request_signature" }, { status: 400 });
+			return withSecurityHeaders(Response.json({ error: "invalid_authn_request_signature" }, { status: 400 }));
 		}
 	}
 
@@ -79,14 +80,14 @@ async function handleSso(req: Request): Promise<Response> {
 	if (!token) {
 		const loginUrl = new URL("/login", url.origin);
 		loginUrl.searchParams.set("redirect", url.pathname + url.search);
-		return new Response(null, { status: 302, headers: { Location: loginUrl.toString() } });
+		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: loginUrl.toString() } }));
 	}
 
 	const session = await getSession(token);
 	if (!session.success || !session.data) {
 		const loginUrl = new URL("/login", url.origin);
 		loginUrl.searchParams.set("redirect", url.pathname + url.search);
-		return new Response(null, { status: 302, headers: { Location: loginUrl.toString() } });
+		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: loginUrl.toString() } }));
 	}
 
 	const { user } = session.data;
@@ -115,8 +116,10 @@ async function handleSso(req: Request): Promise<Response> {
 		"</form></body></html>",
 	].join("");
 
-	return new Response(formHtml, {
-		status: 200,
-		headers: { "content-type": "text/html; charset=utf-8" },
-	});
+	return withSecurityHeaders(
+		new Response(formHtml, {
+			status: 200,
+			headers: { "content-type": "text/html; charset=utf-8" },
+		}),
+	);
 }
