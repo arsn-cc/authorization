@@ -126,7 +126,11 @@ export async function requirePermission(req: Request, permission: AdminPermissio
 
 	let rolePermissions: string[];
 	try {
-		rolePermissions = JSON.parse(role.permissions) as string[];
+		const parsed = JSON.parse(role.permissions);
+		if (!Array.isArray(parsed) || !parsed.every((p): p is string => typeof p === "string")) {
+			return Response.json({ error: "forbidden", message: "invalid permissions" }, { status: 403 });
+		}
+		rolePermissions = parsed;
 	} catch {
 		rolePermissions = [];
 	}

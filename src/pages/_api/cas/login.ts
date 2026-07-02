@@ -26,7 +26,7 @@ export async function GET(req: Request): Promise<Response> {
 
 	const allowedUris = clients.flatMap((c) => (c.redirectUris ?? "").split(",").map((u) => u.trim())).filter(Boolean);
 
-	if (allowedUris.length > 0 && !allowedUris.some((allowed) => service.startsWith(allowed))) {
+	if (allowedUris.length > 0 && !allowedUris.includes(service)) {
 		return Response.json({ error: "unauthorized_service" }, { status: 400 });
 	}
 
