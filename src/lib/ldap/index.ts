@@ -125,17 +125,17 @@ function safeCompare(a: string, b: string): boolean {
 	return timingSafeEqual(bufA, bufB);
 }
 
-export function verifyLdapBind(adminDn: string, adminPassword: string, name: string, password: string): boolean {
+export async function verifyLdapBind(
+	adminDn: string,
+	adminPassword: string,
+	name: string,
+	password: string,
+): Promise<boolean> {
 	if (safeCompare(name, adminDn)) {
 		return safeCompare(adminPassword, password);
 	}
 
-	const email = extractEmailFromDn(name);
-	if (!email) {
-		return false;
-	}
-
-	return false;
+	return verifyLdapUserBind(name, password);
 }
 
 export async function verifyLdapUserBind(name: string, password: string): Promise<boolean> {

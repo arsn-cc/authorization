@@ -81,7 +81,6 @@ Rule of thumb: if it uses a Jotai atom or handles interaction → `"use client"`
 - Session data is server-only — never expose tokens to the client
 - Read auth state in Server Components/Server Actions; pass minimal user data as props
 - Do not store auth tokens in Jotai atoms
-- Middleware (`src/middleware/*.ts`) handles auth guards via Hono
 
 ## Waku Routing
 
@@ -111,6 +110,5 @@ export async function GET(_req: Request, { params }: ApiContext<"/users/[id]">) 
 - `_layout.tsx` wraps children; `_root.tsx` customizes `<html>`
 - `(group)/` dirs organize without affecting URLs
 - Slices in `_slices/` with independent render modes (`<Slice id="..." />`)
-- Middleware: `src/middleware/*.ts` (Hono)
 - Navigation: `<Link>` from `waku`, `useRouter()` for programmatic
 - Metadata auto-hoisted to `<head>`

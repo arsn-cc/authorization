@@ -20,6 +20,7 @@ export const AdminPermission = {
 	RolesDelete: "admin:roles:delete",
 	PermissionsRead: "admin:permissions:read",
 	PermissionsWrite: "admin:permissions:write",
+	PermissionsDelete: "admin:permissions:delete",
 	TokensRead: "admin:tokens:read",
 	TokensWrite: "admin:tokens:write",
 	TokensDelete: "admin:tokens:delete",

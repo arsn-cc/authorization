@@ -14,16 +14,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 	const primaryColor = await getSetting("primary_color");
 
 	return (
-		<div className="font-['Nunito']">
+		<div className="font-sans">
 			<meta name="description" content={data.description} />
 			<link rel="icon" type="image/png" href={data.icon} />
-			<link rel="preconnect" href="https://fonts.googleapis.com" />
-			<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-			<link
-				rel="stylesheet"
-				href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-				precedence="font"
-			/>
 			<script
 				dangerouslySetInnerHTML={{
 					__html: `

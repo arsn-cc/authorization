@@ -381,6 +381,12 @@ export function getScimServiceProviderConfig(): object {
 	};
 }
 
+export function getScimResourceType(id: string): object | null {
+	const resourceTypes = getScimResourceTypes() as { Resources: Array<{ id: string }> };
+	const resource = resourceTypes.Resources.find((r) => r.id === id);
+	return resource ?? null;
+}
+
 export function getScimResourceTypes(): object {
 	return {
 		schemas: [LIST_RESPONSE_SCHEMA],
