@@ -49,6 +49,8 @@ export const updateUserSchema = z.object({
 	roleId: z.number().nullable().optional(),
 	username: z.string().optional(),
 	password: z.string().optional(),
+	lockedUntil: z.string().nullable().optional(),
+	suspensionReason: z.string().nullable().optional(),
 });
 
 export const createClientSchema = z.object({

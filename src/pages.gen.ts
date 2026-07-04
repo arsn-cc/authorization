@@ -8,6 +8,8 @@ import type { getConfig as File_404Index_getConfig } from './pages/404/index';
 // prettier-ignore
 import type { getConfig as File_AboutIndex_getConfig } from './pages/about/index';
 // prettier-ignore
+import type { getConfig as File_DeleteAccountIndex_getConfig } from './pages/delete-account/index';
+// prettier-ignore
 import type { getConfig as File_ForgotPasswordIndex_getConfig } from './pages/forgot-password/index';
 // prettier-ignore
 import type { getConfig as File_Index_getConfig } from './pages/index';
@@ -28,6 +30,7 @@ import type { getConfig as File_VerifyEmailIndex_getConfig } from './pages/verif
 type Page =
 | ({ path: '/404' } & GetConfigResponse<typeof File_404Index_getConfig>)
 | ({ path: '/about' } & GetConfigResponse<typeof File_AboutIndex_getConfig>)
+| ({ path: '/delete-account' } & GetConfigResponse<typeof File_DeleteAccountIndex_getConfig>)
 | ({ path: '/forgot-password' } & GetConfigResponse<typeof File_ForgotPasswordIndex_getConfig>)
 | ({ path: '/' } & GetConfigResponse<typeof File_Index_getConfig>)
 | ({ path: '/login/e-2fa' } & GetConfigResponse<typeof File_LoginE2faIndex_getConfig>)

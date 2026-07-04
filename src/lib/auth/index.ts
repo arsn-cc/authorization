@@ -52,6 +52,13 @@ import { getSetting } from "@/lib/settings";
 import { isPreview } from "@/lib/email/preview";
 import { renderWelcome, renderLoginNotification, renderPasswordReset, renderTwoFactor } from "@/lib/email";
 import { sendEmail } from "@/lib/email/send";
+import {
+	sendPasswordChangedEmail,
+	sendVerifyEmailForUser,
+	sendAccountLockedEmail,
+	sendAccountDeletionConfirmEmail,
+	sendAccountDeletedEmail,
+} from "@/lib/auth/email";
 
 export type {
 	RegisterInput,
@@ -195,14 +202,16 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 
 	if (!isPreview) {
 		const html = await renderWelcome(inserted.name ? { username: inserted.name } : {});
-		const emailResult = await sendEmail({
+		const welcomeResult = await sendEmail({
 			to: inserted.email,
 			subject: "Welcome to ARSN - Your account has been created",
 			html,
 		});
-		if (!emailResult.success) {
-			console.error("Failed to send welcome email:", emailResult.error);
+		if (!welcomeResult.success) {
+			console.error("Failed to send welcome email:", welcomeResult.error);
 		}
+
+		await sendVerifyEmailForUser(inserted.email, inserted.id, inserted.name);
 	}
 
 	// Warm cache for the new user
@@ -303,6 +312,12 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 	// Invalidate cached user so stale data isn't served
 	await invalidateUser({ id: user.id, username: user.username, email: user.email });
 
+	if (!isPreview) {
+		await sendPasswordChangedEmail(user.email, {
+			username: user.name ?? user.username,
+		});
+	}
+
 	return ok(true as const);
 }
 
@@ -337,6 +352,13 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 				...(attempts >= 5 ? { lockedUntil: inMinutes(15) } : {}),
 			})
 			.where(eq(schema.user.id, user.id));
+
+		if (!isPreview && attempts >= 5) {
+			await sendAccountLockedEmail(user.email, {
+				username: user.name ?? user.username,
+			});
+		}
+
 		return err(new InvalidCredentialsError(), "INVALID_CREDENTIALS");
 	}
 
@@ -689,6 +711,113 @@ export async function getSession(token: string): Promise<AuthResult<Authenticate
 }
 
 // ── Logout ─────────────────────────────────────────────────────────
+
+// ── Email verification ──────────────────────────────────────────────
+
+export async function verifyEmail(token: string): Promise<AuthResult<true>> {
+	if (!token) {
+		return err(new AuthError("Verification token is required"), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const tokenHash = hashSecret(token);
+	const [row] = await db
+		.select()
+		.from(schema.emailVerificationToken)
+		.where(and(eq(schema.emailVerificationToken.tokenHash, tokenHash), isNull(schema.emailVerificationToken.usedAt)))
+		.limit(1);
+
+	if (!row || row.expires <= new Date()) {
+		return err(new AuthError("Invalid or expired verification token"), "INVALID_TOKEN");
+	}
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(schema.emailVerificationToken)
+			.set({ usedAt: new Date() })
+			.where(eq(schema.emailVerificationToken.id, row.id));
+		await tx
+			.update(schema.user)
+			.set({ emailVerified: new Date(), updatedAt: new Date() })
+			.where(eq(schema.user.id, row.userId));
+	});
+
+	const user = await getUserById(row.userId);
+	if (user) {
+		await invalidateUser({ id: user.id, username: user.username, email: user.email });
+	}
+
+	return ok(true as const);
+}
+
+// ── Account deletion ────────────────────────────────────────────────
+
+export async function requestAccountDeletion(
+	userId: number,
+	email: string,
+	username: string | null,
+): Promise<AuthResult<true>> {
+	if (isPreview) {
+		return ok(true as const);
+	}
+
+	await sendAccountDeletionConfirmEmail(email, userId, username);
+
+	return ok(true as const);
+}
+
+export async function confirmAccountDeletion(token: string): Promise<AuthResult<true>> {
+	if (!token) {
+		return err(new AuthError("Deletion token is required"), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const tokenHash = hashSecret(token);
+	const [row] = await db
+		.select()
+		.from(schema.accountDeletionToken)
+		.where(and(eq(schema.accountDeletionToken.tokenHash, tokenHash), isNull(schema.accountDeletionToken.usedAt)))
+		.limit(1);
+
+	if (!row || row.expires <= new Date()) {
+		return err(new AuthError("Invalid or expired deletion token"), "INVALID_TOKEN");
+	}
+
+	const user = await getUserById(row.userId);
+	if (!user || !user.email) {
+		return err(new AuthError("User not found"), "NOT_FOUND");
+	}
+
+	// Send deletion notification before removing the user
+	if (!isPreview) {
+		await sendAccountDeletedEmail(user.email, {
+			username: user.name ?? user.username,
+		});
+	}
+
+	const cache = await getCache();
+
+	const sessions = await db
+		.select({ token: schema.session.token })
+		.from(schema.session)
+		.where(eq(schema.session.userId, row.userId));
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(schema.accountDeletionToken)
+			.set({ usedAt: new Date() })
+			.where(eq(schema.accountDeletionToken.id, row.id));
+		await tx.delete(schema.session).where(eq(schema.session.userId, row.userId));
+		await tx.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.userId, row.userId));
+		await tx.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.userId, row.userId));
+		await tx.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.userId, row.userId));
+		await tx.delete(schema.user).where(eq(schema.user.id, row.userId));
+	});
+
+	await Promise.all(sessions.map((s) => cache.delete(sessionKey(s.token))));
+
+	return ok(true as const);
+}
 
 export async function logoutUser(token: string): Promise<AuthResult<true>> {
 	const db = await getDb();

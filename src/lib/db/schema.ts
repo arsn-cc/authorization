@@ -124,6 +124,32 @@ const pendingAuthToken = pgTable("pending_auth_token", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── Email verification token ─────────────────────────────────────────
+// Created when a user registers; used to verify email ownership.
+const emailVerificationToken = pgTable("email_verification_token", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	tokenHash: text("token_hash").notNull().unique(),
+	expires: timestamp("expires").notNull(),
+	usedAt: timestamp("used_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── Account deletion token ───────────────────────────────────────────
+// Created when a user requests account deletion; used to confirm.
+const accountDeletionToken = pgTable("account_deletion_token", {
+	id: serial("id").primaryKey(),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => user.id),
+	tokenHash: text("token_hash").notNull().unique(),
+	expires: timestamp("expires").notNull(),
+	usedAt: timestamp("used_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ── Email two-factor token ────────────────────────────────────────
 // Short-lived sign-in verification link delivered over email. Only the
 // token hash is stored.
@@ -369,6 +395,8 @@ export const schema = {
 	passwordResetToken,
 	pendingAuthToken,
 	emailTwoFactorToken,
+	emailVerificationToken,
+	accountDeletionToken,
 	oauthAuthorizationCode,
 	oauthAccessToken,
 	oauthRefreshToken,

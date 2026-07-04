@@ -1,11 +1,13 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { profileUpdateSchema } from "@/lib/schemas/auth";
+import { usernameToEmail, isValidUsername } from "@/lib/auth/utils";
+import { sendEmailChangedEmail } from "@/lib/auth/email";
 
 export async function GET(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -58,13 +60,42 @@ export async function PATCH(req: Request): Promise<Response> {
 	if (body instanceof Response) {
 		return body;
 	}
+
 	const db = await getDb();
+	const [current] = await db
+		.select({ username: schema.user.username, email: schema.user.email, name: schema.user.name })
+		.from(schema.user)
+		.where(eq(schema.user.id, authed.userId));
+
+	if (!current) {
+		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
+	}
+
 	const updates: Record<string, unknown> = {};
+	let newEmail: string | undefined;
 
 	for (const [key, value] of Object.entries(body)) {
 		if (value !== undefined) {
 			updates[key] = value;
 		}
+	}
+
+	if (body.username !== undefined) {
+		if (!isValidUsername(body.username)) {
+			return withSecurityHeaders(Response.json({ error: "invalid_username" }, { status: 400 }));
+		}
+		const derivedEmail = usernameToEmail(body.username);
+		const [existing] = await db
+			.select()
+			.from(schema.user)
+			.where(and(eq(schema.user.username, body.username), eq(schema.user.email, derivedEmail)))
+			.limit(1);
+		if (existing) {
+			return withSecurityHeaders(Response.json({ error: "username_taken" }, { status: 409 }));
+		}
+		updates.username = body.username;
+		updates.email = derivedEmail;
+		newEmail = derivedEmail;
 	}
 
 	if (Object.keys(updates).length === 0) {
@@ -98,6 +129,13 @@ export async function PATCH(req: Request): Promise<Response> {
 	}
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+
+	if (newEmail && newEmail !== current.email) {
+		await sendEmailChangedEmail(current.email, {
+			username: current.name ?? current.username,
+			newEmail,
+		});
+	}
 
 	return withSecurityHeaders(Response.json(updated));
 }

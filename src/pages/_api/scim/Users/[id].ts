@@ -1,8 +1,12 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { getUser, updateUser, deleteUser } from "@/lib/scim";
+import { getUser as getScimUser, updateUser, deleteUser } from "@/lib/scim";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { z } from "zod";
+import { sendAccountDeletedAdminEmail } from "@/lib/auth/email";
+import { getDb } from "@/lib/db";
+import { schema } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const scimBodySchema = z.object({}).passthrough();
 
@@ -12,7 +16,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 		return result;
 	}
 
-	const user = await getUser(Number(params.id));
+	const user = await getScimUser(Number(params.id));
 	if (!user) {
 		return withSecurityHeaders(
 			Response.json(
@@ -65,6 +69,20 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		return result;
 	}
 
-	await deleteUser(Number(params.id));
+	const db = await getDb();
+	const userId = Number(params.id);
+
+	const [user] = await db
+		.select({ username: schema.user.username, email: schema.user.email, name: schema.user.name })
+		.from(schema.user)
+		.where(eq(schema.user.id, userId));
+
+	if (user) {
+		await sendAccountDeletedAdminEmail(user.email, {
+			username: user.name ?? user.username,
+		});
+	}
+
+	await deleteUser(userId);
 	return withSecurityHeaders(new Response(null, { status: 204 }));
 }

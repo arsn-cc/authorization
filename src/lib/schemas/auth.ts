@@ -35,6 +35,7 @@ export const profileUpdateSchema = z.object({
 	timezone: z.string().nullable().optional(),
 	loginShell: z.string().nullable().optional(),
 	gecos: z.string().nullable().optional(),
+	username: z.string().min(3).max(64).optional(),
 });
 
 export const setSessionSchema = z.object({

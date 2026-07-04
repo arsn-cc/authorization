@@ -8,6 +8,7 @@ import { invalidateUser } from "@/lib/auth/cache";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { passwordChangeSchema } from "@/lib/schemas/auth";
+import { sendPasswordChangedEmail } from "@/lib/auth/email";
 
 export async function POST(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -64,6 +65,10 @@ export async function POST(req: Request): Promise<Response> {
 	]);
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+
+	await sendPasswordChangedEmail(authed.user.email, {
+		username: authed.user.name ?? authed.user.username,
+	});
 
 	const terminatedCount = sessions.filter((s) => s.token !== currentToken).length;
 
