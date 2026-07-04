@@ -89,19 +89,6 @@ function isValidEmail(email: string): boolean {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function passwordResetUrl(token: string): string {
-	const url = new URL("https://auth.arsn.cc/password-reset");
-	url.searchParams.set("token", token);
-	return url.toString();
-}
-
-function twoFactorUrl(pendingToken: string, emailToken: string): string {
-	const url = new URL("https://auth.arsn.cc/login/e-2fa");
-	url.searchParams.set("p", pendingToken);
-	url.searchParams.set("c", emailToken);
-	return url.toString();
-}
-
 async function sendPasswordResetEmail(to: string, username: string | null, token: string) {
 	if (isPreview) {
 		return;
@@ -109,7 +96,7 @@ async function sendPasswordResetEmail(to: string, username: string | null, token
 
 	const html = await renderPasswordReset({
 		...(username ? { username } : {}),
-		resetUrl: passwordResetUrl(token),
+		token,
 	});
 	const emailResult = await sendEmail({
 		to,
@@ -128,7 +115,7 @@ async function sendTwoFactorEmail(to: string, username: string | null, pendingTo
 
 	const html = await renderTwoFactor({
 		...(username ? { username } : {}),
-		verifyUrl: twoFactorUrl(pendingToken, emailToken),
+		pendingToken,
 		code: emailToken,
 	});
 	const emailResult = await sendEmail({

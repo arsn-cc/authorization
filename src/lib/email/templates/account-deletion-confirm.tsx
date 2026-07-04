@@ -6,14 +6,17 @@ import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
+const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
+const confirmUrl = (token: string) => `${base()}/delete-account?token=${encodeURIComponent(token)}`;
+
 export interface AccountDeletionConfirmEmailProps {
 	username?: string;
-	confirmUrl?: string;
+	token?: string;
 }
 
 export default function AccountDeletionConfirmEmail({
 	username = isPreview ? preview.username : undefined,
-	confirmUrl = isPreview ? preview.confirmUrl : undefined,
+	token = isPreview ? preview.token : undefined,
 }: AccountDeletionConfirmEmailProps) {
 	return (
 		<Layout preview="Confirm account deletion">
@@ -25,9 +28,9 @@ export default function AccountDeletionConfirmEmail({
 					clicking the button below. This action cannot be undone.
 				</Text>
 			</Section>
-			{confirmUrl && (
+			{token && (
 				<Section className="mt-6 text-center">
-					<Button href={confirmUrl} className="bg-red-800">
+					<Button href={confirmUrl(token)} className="bg-red-800">
 						Confirm deletion
 					</Button>
 				</Section>

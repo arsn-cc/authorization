@@ -5,14 +5,17 @@ import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
+const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
+const resetUrl = (token: string) => `${base()}/password-reset?token=${encodeURIComponent(token)}`;
+
 export interface PasswordResetEmailProps {
 	username?: string;
-	resetUrl?: string;
+	token?: string;
 }
 
 export default function PasswordResetEmail({
 	username = isPreview ? preview.username : undefined,
-	resetUrl = isPreview ? preview.resetUrl : undefined,
+	token = isPreview ? preview.token : undefined,
 }: PasswordResetEmailProps) {
 	return (
 		<Layout preview="Reset your password">
@@ -25,7 +28,7 @@ export default function PasswordResetEmail({
 				</Text>
 			</Section>
 			<Section className="mt-6 text-center">
-				<Button href={resetUrl ?? "#"}>Reset password</Button>
+				<Button href={token ? resetUrl(token) : "#"}>Reset password</Button>
 			</Section>
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">

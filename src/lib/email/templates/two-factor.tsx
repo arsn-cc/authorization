@@ -5,17 +5,22 @@ import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
+const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
+const verifyUrl = (pendingToken: string, code: string) =>
+	`${base()}/login/e-2fa?p=${encodeURIComponent(pendingToken)}&c=${encodeURIComponent(code)}`;
+
 export interface TwoFactorEmailProps {
 	username?: string;
-	verifyUrl?: string;
+	pendingToken?: string;
 	code?: string;
 }
 
 export default function TwoFactorEmail({
 	username = isPreview ? preview.username : undefined,
-	verifyUrl = isPreview ? preview.twoFactorUrl : undefined,
+	pendingToken = isPreview ? preview.pendingToken : undefined,
 	code = isPreview ? preview.code : undefined,
 }: TwoFactorEmailProps) {
+	const url = pendingToken && code ? verifyUrl(pendingToken, code) : undefined;
 	return (
 		<Layout preview="Verify your sign-in">
 			<HeadingBlock>Verify your sign-in</HeadingBlock>
@@ -26,7 +31,7 @@ export default function TwoFactorEmail({
 				</Text>
 			</Section>
 			<Section className="mt-6 text-center">
-				<Button href={verifyUrl ?? "#"}>Verify sign-in</Button>
+				<Button href={url ?? "#"}>Verify sign-in</Button>
 			</Section>
 			{code && (
 				<Section className="mt-6 text-center">
@@ -38,7 +43,7 @@ export default function TwoFactorEmail({
 				<Text className="text-foreground mb-2 text-sm leading-relaxed">
 					If the button above doesn't work, copy and paste this link into your browser:
 				</Text>
-				<Text className="text-muted-foreground font-mono text-xs leading-relaxed break-all">{verifyUrl}</Text>
+				<Text className="text-muted-foreground font-mono text-xs leading-relaxed break-all">{url}</Text>
 			</Section>
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">

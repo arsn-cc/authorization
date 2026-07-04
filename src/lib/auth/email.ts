@@ -51,20 +51,6 @@ async function send(name: string, to: string, subject: string, html: string): Pr
 	return { success: true };
 }
 
-function verifyEmailUrlBase(): string {
-	return "https://auth.arsn.cc/verify-email";
-}
-
-function deletionConfirmUrlBase(): string {
-	return "https://auth.arsn.cc/delete-account";
-}
-
-function withToken(urlBase: string, token: string): string {
-	const url = new URL(urlBase);
-	url.searchParams.set("token", token);
-	return url.toString();
-}
-
 // ── Password changed ─────────────────────────────────────────────────
 
 export async function sendPasswordChangedEmail(to: string, props: PasswordChangedEmailProps): Promise<EmailResult> {
@@ -88,25 +74,6 @@ export async function sendEmailChangedEmail(to: string, props: EmailChangedEmail
 }
 
 // ── Email verification ───────────────────────────────────────────────
-
-export async function sendVerifyEmail(to: string, username: string | null): Promise<EmailResult & { token?: string }> {
-	const token = generateToken();
-	const tokenHash = hashSecret(token);
-	const db = await getDb();
-
-	await db.insert(schema.emailVerificationToken).values({
-		userId: 0,
-		tokenHash,
-		expires: inMinutes(VERIFY_EMAIL_TTL_MINUTES),
-	});
-
-	const html = await renderVerifyEmail({
-		...(username ? { username } : {}),
-		verifyUrl: withToken(verifyEmailUrlBase(), token),
-	});
-	const result = await send("verify_email", to, "Verify your email address", html);
-	return { ...result, token };
-}
 
 export async function sendVerifyEmailForUser(
 	to: string,
@@ -133,7 +100,7 @@ export async function sendVerifyEmailForUser(
 
 	const html = await renderVerifyEmail({
 		...(username ? { username } : {}),
-		verifyUrl: withToken(verifyEmailUrlBase(), token),
+		token,
 	});
 	return send("verify_email", to, "Verify your email address", html);
 }
@@ -165,7 +132,7 @@ export async function sendAccountDeletionConfirmEmail(
 
 	const html = await renderAccountDeletionConfirm({
 		...(username ? { username } : {}),
-		confirmUrl: withToken(deletionConfirmUrlBase(), token),
+		token,
 	});
 	return send("account_deletion_confirm", to, "Confirm account deletion", html);
 }

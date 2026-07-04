@@ -5,14 +5,17 @@ import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
+const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
+const verifyUrl = (token: string) => `${base()}/verify-email?token=${encodeURIComponent(token)}`;
+
 export interface VerifyEmailProps {
 	username?: string;
-	verifyUrl: string;
+	token?: string;
 }
 
 export default function VerifyEmail({
 	username = isPreview ? preview.username : undefined,
-	verifyUrl,
+	token = isPreview ? preview.token : undefined,
 }: VerifyEmailProps) {
 	return (
 		<Layout preview="Verify your email address">
@@ -31,7 +34,7 @@ export default function VerifyEmail({
 				</Text>
 			</Section>
 			<Section className="mt-6 text-center">
-				<Button href={verifyUrl}>Verify email</Button>
+				<Button href={token ? verifyUrl(token) : "#"}>Verify email</Button>
 			</Section>
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">
