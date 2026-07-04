@@ -90,15 +90,13 @@ function isValidEmail(email: string): boolean {
 }
 
 function passwordResetUrl(token: string): string {
-	const base = process.env.PASSWORD_RESET_URL_BASE ?? "http://localhost:3000/password-reset";
-	const url = new URL(base);
+	const url = new URL("https://auth.arsn.cc/password-reset");
 	url.searchParams.set("token", token);
 	return url.toString();
 }
 
 function twoFactorUrl(pendingToken: string, emailToken: string): string {
-	const base = process.env.EMAIL_TWO_FACTOR_URL_BASE ?? "http://localhost:3000/login/e-2fa";
-	const url = new URL(base);
+	const url = new URL("https://auth.arsn.cc/login/e-2fa");
 	url.searchParams.set("p", pendingToken);
 	url.searchParams.set("c", emailToken);
 	return url.toString();

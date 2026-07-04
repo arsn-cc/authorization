@@ -52,11 +52,11 @@ async function send(name: string, to: string, subject: string, html: string): Pr
 }
 
 function verifyEmailUrlBase(): string {
-	return process.env.VERIFY_EMAIL_URL_BASE ?? `http://localhost:3000/verify-email`;
+	return "https://auth.arsn.cc/verify-email";
 }
 
 function deletionConfirmUrlBase(): string {
-	return process.env.ACCOUNT_DELETION_CONFIRM_URL_BASE ?? `http://localhost:3000/delete-account`;
+	return "https://auth.arsn.cc/delete-account";
 }
 
 function withToken(urlBase: string, token: string): string {
