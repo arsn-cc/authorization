@@ -131,10 +131,14 @@ export async function PATCH(req: Request): Promise<Response> {
 	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
 
 	if (newEmail && newEmail !== current.email) {
-		await sendEmailChangedEmail(current.email, {
-			username: current.name ?? current.username,
-			newEmail,
-		});
+		await sendEmailChangedEmail(
+			current.email,
+			{
+				username: current.name ?? current.username,
+				newEmail,
+			},
+			authed.userId,
+		);
 	}
 
 	return withSecurityHeaders(Response.json(updated));

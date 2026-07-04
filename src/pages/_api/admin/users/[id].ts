@@ -168,10 +168,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	}
 
 	if (emailChanged) {
-		await sendEmailChangedEmail(oldEmail, {
-			username: displayName,
-			newEmail: updated.email,
-		});
+		await sendEmailChangedEmail(
+			oldEmail,
+			{
+				username: displayName,
+				newEmail: updated.email,
+			},
+			userId,
+		);
 	}
 
 	if (parsed.lockedUntil !== undefined) {

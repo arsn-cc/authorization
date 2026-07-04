@@ -1,16 +1,22 @@
 import { Section, Text } from "react-email";
 import { Layout } from "@/lib/email/components/layout";
 import { Link } from "@/lib/email/components/link";
+import { Button } from "@/lib/email/components/button";
 import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
+const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
+const unlockUrl = (token: string) => `${base()}/unlock-account?token=${encodeURIComponent(token)}`;
+
 export interface AccountLockedEmailProps {
 	username?: string;
+	unlockToken?: string;
 }
 
 export default function AccountLockedEmail({
 	username = isPreview ? preview.username : undefined,
+	unlockToken = isPreview ? preview.unlockToken : undefined,
 }: AccountLockedEmailProps) {
 	return (
 		<Layout preview="Your account has been locked">
@@ -22,6 +28,11 @@ export default function AccountLockedEmail({
 					unauthorised access.
 				</Text>
 			</Section>
+			{unlockToken && (
+				<Section className="mt-6 text-center">
+					<Button href={unlockUrl(unlockToken)}>Unlock account</Button>
+				</Section>
+			)}
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">
 					If you did not attempt to sign in, please reset your password immediately and contact{" "}

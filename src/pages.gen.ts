@@ -24,6 +24,10 @@ import type { getConfig as File_PasswordResetIndex_getConfig } from './pages/pas
 // prettier-ignore
 import type { getConfig as File_RegisterIndex_getConfig } from './pages/register/index';
 // prettier-ignore
+import type { getConfig as File_RevertEmailIndex_getConfig } from './pages/revert-email/index';
+// prettier-ignore
+import type { getConfig as File_UnlockAccountIndex_getConfig } from './pages/unlock-account/index';
+// prettier-ignore
 import type { getConfig as File_VerifyEmailIndex_getConfig } from './pages/verify-email/index';
 
 // prettier-ignore
@@ -38,6 +42,8 @@ type Page =
 | ({ path: '/login/totp' } & GetConfigResponse<typeof File_LoginTotpIndex_getConfig>)
 | ({ path: '/password-reset' } & GetConfigResponse<typeof File_PasswordResetIndex_getConfig>)
 | ({ path: '/register' } & GetConfigResponse<typeof File_RegisterIndex_getConfig>)
+| ({ path: '/revert-email' } & GetConfigResponse<typeof File_RevertEmailIndex_getConfig>)
+| ({ path: '/unlock-account' } & GetConfigResponse<typeof File_UnlockAccountIndex_getConfig>)
 | ({ path: '/verify-email' } & GetConfigResponse<typeof File_VerifyEmailIndex_getConfig>);
 
 // prettier-ignore

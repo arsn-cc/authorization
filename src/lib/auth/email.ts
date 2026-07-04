@@ -31,6 +31,8 @@ const userIdSchema = z.number().int().positive("userId must be a positive intege
 
 const VERIFY_EMAIL_TTL_MINUTES = 60;
 const ACCOUNT_DELETION_TTL_MINUTES = 60;
+const EMAIL_CHANGE_TTL_MINUTES = 60;
+const ACCOUNT_UNLOCK_TTL_MINUTES = 60;
 
 type EmailResult = { success: true } | { success: false; error: string };
 
@@ -64,12 +66,39 @@ export async function sendPasswordChangedEmail(to: string, props: PasswordChange
 
 // ── Email changed ────────────────────────────────────────────────────
 
-export async function sendEmailChangedEmail(to: string, props: EmailChangedEmailProps): Promise<EmailResult> {
+export async function sendEmailChangedEmail(
+	to: string,
+	props: EmailChangedEmailProps,
+	userId?: number,
+): Promise<EmailResult> {
 	const emailResult = emailSchema.safeParse(to);
 	if (!emailResult.success) {
 		return validationError("to: " + emailResult.error.issues[0]!.message);
 	}
-	const html = await renderEmailChanged(props);
+
+	let revertToken: string | undefined;
+
+	if (userId !== undefined) {
+		const idResult = userIdSchema.safeParse(userId);
+		if (!idResult.success) {
+			return validationError("userId: " + idResult.error.issues[0]!.message);
+		}
+		revertToken = generateToken();
+		const tokenHash = hashSecret(revertToken);
+		const db = await getDb();
+		await db.insert(schema.emailChangeToken).values({
+			userId,
+			tokenHash,
+			previousEmail: to,
+			expires: inMinutes(EMAIL_CHANGE_TTL_MINUTES),
+		});
+	}
+
+	const html = await renderEmailChanged({
+		...(props.username ? { username: props.username } : {}),
+		...(props.newEmail ? { newEmail: props.newEmail } : {}),
+		...(revertToken ? { revertToken } : {}),
+	});
 	return send("email_changed", to, "Your ARSN email address has been changed", html);
 }
 
@@ -160,12 +189,37 @@ export async function sendAccountDeletedAdminEmail(
 
 // ── Account lock ─────────────────────────────────────────────────────
 
-export async function sendAccountLockedEmail(to: string, props: AccountLockedEmailProps): Promise<EmailResult> {
+export async function sendAccountLockedEmail(
+	to: string,
+	props: AccountLockedEmailProps,
+	userId?: number,
+): Promise<EmailResult> {
 	const emailResult = emailSchema.safeParse(to);
 	if (!emailResult.success) {
 		return validationError("to: " + emailResult.error.issues[0]!.message);
 	}
-	const html = await renderAccountLocked(props);
+
+	let unlockToken: string | undefined;
+
+	if (userId !== undefined) {
+		const idResult = userIdSchema.safeParse(userId);
+		if (!idResult.success) {
+			return validationError("userId: " + idResult.error.issues[0]!.message);
+		}
+		unlockToken = generateToken();
+		const tokenHash = hashSecret(unlockToken);
+		const db = await getDb();
+		await db.insert(schema.accountUnlockToken).values({
+			userId,
+			tokenHash,
+			expires: inMinutes(ACCOUNT_UNLOCK_TTL_MINUTES),
+		});
+	}
+
+	const html = await renderAccountLocked({
+		...(props.username ? { username: props.username } : {}),
+		...(unlockToken ? { unlockToken } : {}),
+	});
 	return send("account_locked", to, "Your ARSN account has been locked", html);
 }
 

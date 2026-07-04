@@ -340,9 +340,13 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 			.where(eq(schema.user.id, user.id));
 
 		if (!isPreview && attempts >= 5) {
-			await sendAccountLockedEmail(user.email, {
-				username: user.name ?? user.username,
-			});
+			await sendAccountLockedEmail(
+				user.email,
+				{
+					username: user.name ?? user.username,
+				},
+				user.id,
+			);
 		}
 
 		return err(new InvalidCredentialsError(), "INVALID_CREDENTIALS");
@@ -735,6 +739,76 @@ export async function verifyEmail(token: string): Promise<AuthResult<true>> {
 	if (user) {
 		await invalidateUser({ id: user.id, username: user.username, email: user.email });
 	}
+
+	return ok(true as const);
+}
+
+// ── Email revert ────────────────────────────────────────────────────
+
+export async function revertEmail(token: string): Promise<AuthResult<true>> {
+	const tokenResult = tokenSchema.safeParse(token);
+	if (!tokenResult.success) {
+		return err(new AuthError(tokenResult.error.issues[0]!.message), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const tokenHash = hashSecret(token);
+	const [row] = await db
+		.select()
+		.from(schema.emailChangeToken)
+		.where(and(eq(schema.emailChangeToken.tokenHash, tokenHash), isNull(schema.emailChangeToken.usedAt)))
+		.limit(1);
+
+	if (!row || row.expires <= new Date()) {
+		return err(new AuthError("Invalid or expired revert token"), "INVALID_TOKEN");
+	}
+
+	await db.transaction(async (tx) => {
+		await tx.update(schema.emailChangeToken).set({ usedAt: new Date() }).where(eq(schema.emailChangeToken.id, row.id));
+		await tx
+			.update(schema.user)
+			.set({ email: row.previousEmail, updatedAt: new Date() })
+			.where(eq(schema.user.id, row.userId));
+	});
+
+	const user = await getUserById(row.userId);
+	if (user) {
+		await invalidateUser({ id: user.id, username: user.username, email: user.email });
+	}
+
+	return ok(true as const);
+}
+
+// ── Account unlock ──────────────────────────────────────────────────
+
+export async function unlockAccount(token: string): Promise<AuthResult<true>> {
+	const tokenResult = tokenSchema.safeParse(token);
+	if (!tokenResult.success) {
+		return err(new AuthError(tokenResult.error.issues[0]!.message), "VALIDATION_ERROR");
+	}
+
+	const db = await getDb();
+	const tokenHash = hashSecret(token);
+	const [row] = await db
+		.select()
+		.from(schema.accountUnlockToken)
+		.where(and(eq(schema.accountUnlockToken.tokenHash, tokenHash), isNull(schema.accountUnlockToken.usedAt)))
+		.limit(1);
+
+	if (!row || row.expires <= new Date()) {
+		return err(new AuthError("Invalid or expired unlock token"), "INVALID_TOKEN");
+	}
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(schema.accountUnlockToken)
+			.set({ usedAt: new Date() })
+			.where(eq(schema.accountUnlockToken.id, row.id));
+		await tx
+			.update(schema.user)
+			.set({ failedLoginAttempts: 0, lockedUntil: null, updatedAt: new Date() })
+			.where(eq(schema.user.id, row.userId));
+	});
 
 	return ok(true as const);
 }
