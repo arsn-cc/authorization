@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { updateSettingsSchema } from "@/lib/schemas/admin";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -22,11 +24,15 @@ export async function PATCH(req: Request): Promise<Response> {
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, string | null | undefined>;
+	const parsed = await parseJsonSafe(req, updateSettingsSchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
 	const updated: Record<string, string> = {};
 	const cache = await getCache();
 
-	for (const [key, value] of Object.entries(body)) {
+	for (const [key, value] of Object.entries(parsed)) {
 		if (value === null) {
 			const db = await getDb();
 			await db.delete(schema.setting).where(eq(schema.setting.key, key));

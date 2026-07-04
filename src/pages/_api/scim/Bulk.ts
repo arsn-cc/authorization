@@ -1,6 +1,20 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { createUser, updateUser, deleteUser, createGroup, deleteGroup } from "@/lib/scim";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { z } from "zod";
+
+const bulkOperationSchema = z.object({
+	method: z.enum(["POST", "PUT", "PATCH", "DELETE"]),
+	path: z.string(),
+	data: z.record(z.string(), z.unknown()).optional(),
+});
+
+const bulkRequestSchema = z.object({
+	schemas: z.array(z.string()).optional(),
+	Operations: z.array(bulkOperationSchema).optional(),
+	failOnErrors: z.number().optional(),
+});
 
 function parseId(path: string): number | null {
 	const segment = path.split("/")[2];
@@ -14,17 +28,12 @@ export async function POST(req: Request): Promise<Response> {
 		return result;
 	}
 
-	const body = (await req.json()) as {
-		schemas?: string[];
-		Operations?: Array<{
-			method: "POST" | "PUT" | "PATCH" | "DELETE";
-			path: string;
-			data?: Record<string, unknown>;
-		}>;
-		failOnErrors?: number;
-	};
+	const parsed = await parseJsonSafe(req, bulkRequestSchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
 
-	const ops = body.Operations ?? [];
+	const ops = parsed.Operations ?? [];
 	const results: Array<{ location?: string; method: string; status: number; response?: unknown; code?: string }> = [];
 
 	for (const op of ops) {

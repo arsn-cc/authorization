@@ -11,6 +11,8 @@ import {
 	hashBackupCode,
 } from "@/lib/auth/totp";
 import { invalidateUser } from "@/lib/auth/cache";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { totpVerifySchema } from "@/lib/schemas/auth";
 
 export async function GET(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -76,9 +78,9 @@ export async function PUT(req: Request): Promise<Response> {
 		return unauthorized();
 	}
 
-	const body = (await req.json()) as { code: string };
-	if (!body.code) {
-		return withSecurityHeaders(Response.json({ error: "Verification code is required" }, { status: 400 }));
+	const body = await parseJsonSafe(req, totpVerifySchema);
+	if (body instanceof Response) {
+		return body;
 	}
 
 	const db = await getDb();

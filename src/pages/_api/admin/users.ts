@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { createUserSchema } from "@/lib/schemas/admin";
 import { count, eq, ilike, or, asc, desc, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -68,10 +70,11 @@ export async function POST(req: Request): Promise<Response> {
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, string | undefined>;
-	const username = body.username;
-	const password = body.password;
-	const name = body.name;
+	const parsed = await parseJsonSafe(req, createUserSchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+	const { username, password, name } = parsed;
 
 	if (!username || !isValidUsername(username)) {
 		return withSecurityHeaders(Response.json({ error: "invalid_username" }, { status: 400 }));

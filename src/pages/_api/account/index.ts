@@ -4,6 +4,8 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getAccountUser, unauthorized } from "./auth";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { profileUpdateSchema } from "@/lib/schemas/auth";
 
 export async function GET(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -52,29 +54,16 @@ export async function PATCH(req: Request): Promise<Response> {
 		return unauthorized();
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
+	const body = await parseJsonSafe(req, profileUpdateSchema);
+	if (body instanceof Response) {
+		return body;
+	}
 	const db = await getDb();
 	const updates: Record<string, unknown> = {};
 
-	const stringFields = [
-		"name",
-		"givenName",
-		"familyName",
-		"displayName",
-		"nickname",
-		"image",
-		"phoneNumber",
-		"profileUrl",
-		"websiteUrl",
-		"address",
-		"preferredLanguage",
-		"locale",
-		"timezone",
-	] as const;
-
-	for (const field of stringFields) {
-		if (body[field] !== undefined) {
-			updates[field] = body[field] === null ? null : (body[field] as string);
+	for (const [key, value] of Object.entries(body)) {
+		if (value !== undefined) {
+			updates[key] = value;
 		}
 	}
 

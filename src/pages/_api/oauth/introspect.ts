@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseFormSafe } from "@/lib/http/validate";
+import { introspectFormSchema } from "@/lib/schemas/oauth";
 import { authenticateClient, getTokenIntrospection } from "@/lib/oauth";
 
 function clientCredentialsFromBasicAuth(req: Request): { clientId: string; clientSecret: string } | null {
@@ -15,15 +17,14 @@ function clientCredentialsFromBasicAuth(req: Request): { clientId: string; clien
 }
 
 export async function POST(req: Request): Promise<Response> {
-	const form = await req.formData();
-	const token = form.get("token") as string;
-
-	if (!token) {
-		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
+	const parsed = await parseFormSafe(req, introspectFormSchema);
+	if (parsed instanceof Response) {
+		return parsed;
 	}
 
-	const formClientId = form.get("client_id") as string | undefined;
-	const formClientSecret = form.get("client_secret") as string | undefined;
+	const token = parsed.token;
+	const formClientId = parsed.client_id;
+	const formClientSecret = parsed.client_secret;
 	const basic = clientCredentialsFromBasicAuth(req);
 
 	const clientId = basic?.clientId ?? formClientId;

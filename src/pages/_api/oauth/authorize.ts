@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseQuery } from "@/lib/http/validate";
+import { authorizeQuerySchema } from "@/lib/schemas/oauth";
 import { eq } from "drizzle-orm";
 import { getClientById, generateAuthorizationCode, type AuthorizationRequest } from "@/lib/oauth";
 import { getSession } from "@/lib/auth";
@@ -8,16 +10,16 @@ import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 export async function GET(req: Request): Promise<Response> {
 	const url = new URL(req.url);
-	const responseType = url.searchParams.get("response_type");
-	const clientId = url.searchParams.get("client_id");
-	const redirectUri = url.searchParams.get("redirect_uri");
-	const scope = url.searchParams.get("scope") ?? "openid";
-	const stateParam = url.searchParams.get("state");
-	const codeChallengeParam = url.searchParams.get("code_challenge");
-	const codeChallengeMethodParam = url.searchParams.get(
-		"code_challenge_method",
-	) as AuthorizationRequest["codeChallengeMethod"];
-	const nonceParam = url.searchParams.get("nonce");
+	const query = parseQuery(url, authorizeQuerySchema);
+
+	const responseType = query.response_type;
+	const clientId = query.client_id;
+	const redirectUri = query.redirect_uri;
+	const scope = query.scope ?? "openid";
+	const stateParam = query.state;
+	const codeChallengeParam = query.code_challenge;
+	const codeChallengeMethodParam = query.code_challenge_method as AuthorizationRequest["codeChallengeMethod"];
+	const nonceParam = query.nonce;
 
 	if (responseType !== "code") {
 		return withSecurityHeaders(

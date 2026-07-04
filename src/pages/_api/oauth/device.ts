@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseFormSafe } from "@/lib/http/validate";
+import { deviceFormSchema } from "@/lib/schemas/oauth";
 import { randomBytes } from "node:crypto";
 import { count, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
@@ -6,13 +8,13 @@ import { schema } from "@/lib/db/schema";
 import { getClientById } from "@/lib/oauth";
 
 export async function POST(req: Request): Promise<Response> {
-	const form = await req.formData();
-	const clientId = form.get("client_id") as string;
-	const scope = (form.get("scope") as string) ?? "";
-
-	if (!clientId) {
-		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
+	const parsed = await parseFormSafe(req, deviceFormSchema);
+	if (parsed instanceof Response) {
+		return parsed;
 	}
+
+	const clientId = parsed.client_id;
+	const scope = parsed.scope;
 
 	const client = await getClientById(clientId);
 	if (!client) {

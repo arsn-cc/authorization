@@ -1,10 +1,12 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { setSessionSchema } from "@/lib/schemas/auth";
 
 export async function POST(req: Request): Promise<Response> {
-	const body = (await req.json()) as { token?: string; expires?: string };
-	if (!body.token) {
-		return withSecurityHeaders(Response.json({ error: "missing_token" }, { status: 400 }));
+	const body = await parseJsonSafe(req, setSessionSchema);
+	if (body instanceof Response) {
+		return body;
 	}
 
 	const maxAge = body.expires

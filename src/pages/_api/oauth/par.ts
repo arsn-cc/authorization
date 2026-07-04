@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseFormSafe } from "@/lib/http/validate";
+import { parFormSchema } from "@/lib/schemas/oauth";
 import { randomBytes } from "node:crypto";
 import {
 	generateAuthorizationCode,
@@ -23,19 +25,19 @@ function clientSecretFromBasicAuth(req: Request): string | undefined {
 }
 
 export async function POST(req: Request): Promise<Response> {
-	const form = await req.formData();
-	const clientId = form.get("client_id") as string;
-	const clientSecret = (form.get("client_secret") as string | undefined) ?? clientSecretFromBasicAuth(req);
-	const redirectUri = form.get("redirect_uri") as string;
-	const scope = (form.get("scope") as string) ?? "openid";
-	const stateParam = form.get("state") as string | null;
-	const codeChallengeParam = form.get("code_challenge") as string | null;
-	const codeChallengeMethodParam = form.get("code_challenge_method") as string | null;
-	const nonceParam = form.get("nonce") as string | null;
-
-	if (!clientId || !redirectUri) {
-		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
+	const parsed = await parseFormSafe(req, parFormSchema);
+	if (parsed instanceof Response) {
+		return parsed;
 	}
+
+	const clientId = parsed.client_id;
+	const clientSecret = parsed.client_secret ?? clientSecretFromBasicAuth(req);
+	const redirectUri = parsed.redirect_uri;
+	const scope = parsed.scope ?? "openid";
+	const stateParam = parsed.state ?? null;
+	const codeChallengeParam = parsed.code_challenge ?? null;
+	const codeChallengeMethodParam = parsed.code_challenge_method ?? null;
+	const nonceParam = parsed.nonce ?? null;
 
 	const client = await authenticateClient(clientId, clientSecret);
 	if (!client) {

@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { updateRoleSchema } from "@/lib/schemas/admin";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -28,18 +30,22 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
+	const parsed = await parseJsonSafe(req, updateRoleSchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
 	const db = await getDb();
 	const updates: Record<string, unknown> = {};
 
-	if (body.name !== undefined) {
-		updates.name = body.name;
+	if (parsed.name !== undefined) {
+		updates.name = parsed.name;
 	}
-	if (body.description !== undefined) {
-		updates.description = body.description === null ? null : body.description;
+	if (parsed.description !== undefined) {
+		updates.description = parsed.description;
 	}
-	if (body.permissions !== undefined) {
-		updates.permissions = body.permissions === null ? "[]" : body.permissions;
+	if (parsed.permissions !== undefined) {
+		updates.permissions = parsed.permissions;
 	}
 
 	const [updated] = await db

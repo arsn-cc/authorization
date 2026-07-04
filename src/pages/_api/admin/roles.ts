@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { createRoleSchema } from "@/lib/schemas/admin";
 import { count, ilike, or, asc, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -52,18 +54,18 @@ export async function POST(req: Request): Promise<Response> {
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
-	if (!body.name) {
-		return withSecurityHeaders(Response.json({ error: "missing_name" }, { status: 400 }));
+	const parsed = await parseJsonSafe(req, createRoleSchema);
+	if (parsed instanceof Response) {
+		return parsed;
 	}
 
 	const db = await getDb();
 	const [inserted] = await db
 		.insert(schema.role)
 		.values({
-			name: body.name as string,
-			description: (body.description as string | null) ?? null,
-			permissions: (body.permissions as string | null) ?? "[]",
+			name: parsed.name,
+			description: parsed.description ?? null,
+			permissions: parsed.permissions,
 		})
 		.returning({ id: schema.role.id, name: schema.role.name });
 

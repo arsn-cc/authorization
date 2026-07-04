@@ -1,23 +1,15 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { validateServiceTicket, createServiceResponse, createServiceFailureResponse } from "@/lib/cas";
+import { parseFormSafe } from "@/lib/http/validate";
+import { casSamlValidateSchema } from "@/lib/schemas/cas";
 
 export async function POST(req: Request): Promise<Response> {
-	const form = await req.formData();
-	const ticket = form.get("ticket") as string;
-	const service = form.get("service") as string;
-	const _saml = form.get("SAMLart") as string | null;
-
-	if (!ticket || !service) {
-		const xml = createServiceFailureResponse("INVALID_REQUEST", "Missing ticket or service parameter");
-		return withSecurityHeaders(
-			new Response(xml, {
-				status: 200,
-				headers: { "content-type": "text/xml; charset=utf-8" },
-			}),
-		);
+	const parsed = await parseFormSafe(req, casSamlValidateSchema);
+	if (parsed instanceof Response) {
+		return parsed;
 	}
 
-	const result = await validateServiceTicket(ticket, service);
+	const result = await validateServiceTicket(parsed.ticket, parsed.service);
 	if (!result) {
 		const xml = createServiceFailureResponse("INVALID_TICKET", "Ticket validation failed");
 		return withSecurityHeaders(

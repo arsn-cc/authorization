@@ -7,6 +7,8 @@ import { verifyPassword, hashPassword, isValidPassword } from "@/lib/auth";
 import { sessionKey } from "@/lib/auth/utils";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getAccountUser, unauthorized } from "./auth";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { passwordChangeSchema } from "@/lib/schemas/auth";
 
 export async function POST(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -14,13 +16,11 @@ export async function POST(req: Request): Promise<Response> {
 		return unauthorized();
 	}
 
-	const body = (await req.json()) as Record<string, string | undefined>;
-	const currentPassword = body.currentPassword;
-	const newPassword = body.newPassword;
-
-	if (!currentPassword || !newPassword) {
-		return withSecurityHeaders(Response.json({ error: "current_password_and_new_password_required" }, { status: 400 }));
+	const body = await parseJsonSafe(req, passwordChangeSchema);
+	if (body instanceof Response) {
+		return body;
 	}
+	const { currentPassword, newPassword } = body;
 
 	if (!isValidPassword(newPassword)) {
 		return withSecurityHeaders(Response.json({ error: "new_password_insufficient_complexity" }, { status: 400 }));

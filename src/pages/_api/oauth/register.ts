@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { clientRegisterSchema } from "@/lib/schemas/oauth";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -11,17 +13,16 @@ export async function POST(req: Request): Promise<Response> {
 		return authResult;
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
-
-	const clientId = body.client_id as string | undefined;
-	const clientName = body.client_name as string | undefined;
-	const redirectUris = body.redirect_uris as string[] | undefined;
-	const grantTypes = body.grant_types as string[] | undefined;
-	const tokenEndpointAuthMethod = body.token_endpoint_auth_method as string | undefined;
-
-	if (!clientName || !redirectUris?.length) {
-		return withSecurityHeaders(Response.json({ error: "invalid_client_metadata" }, { status: 400 }));
+	const parsed = await parseJsonSafe(req, clientRegisterSchema);
+	if (parsed instanceof Response) {
+		return parsed;
 	}
+
+	const clientId = parsed.client_id;
+	const clientName = parsed.client_name;
+	const redirectUris = parsed.redirect_uris;
+	const grantTypes = parsed.grant_types;
+	const tokenEndpointAuthMethod = parsed.token_endpoint_auth_method;
 
 	for (const uri of redirectUris) {
 		try {

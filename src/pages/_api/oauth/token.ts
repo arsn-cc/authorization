@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseFormSafe } from "@/lib/http/validate";
+import { tokenRequestSchema } from "@/lib/schemas/oauth";
 import {
 	exchangeAuthorizationCode,
 	exchangeClientCredentials,
@@ -35,17 +37,19 @@ export async function POST(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
 	}
 
-	const form = await req.formData();
-	const body = Object.fromEntries(form.entries()) as Record<string, string>;
+	const parsed = await parseFormSafe(req, tokenRequestSchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
 
-	const bodyClientId = body.client_id || clientCredentials(req) || "";
-	const grantType = body.grant_type as TokenRequest["grantType"];
-	const code = body.code;
-	const redirectUri = body.redirect_uri;
-	const codeVerifier = body.code_verifier;
-	const refreshTokenParam = body.refresh_token;
-	const scope = body.scope;
-	let clientSecret = body.client_secret;
+	const bodyClientId = parsed.client_id || clientCredentials(req) || "";
+	const grantType = parsed.grant_type as TokenRequest["grantType"];
+	const code = parsed.code;
+	const redirectUri = parsed.redirect_uri;
+	const codeVerifier = parsed.code_verifier;
+	const refreshTokenParam = parsed.refresh_token;
+	const scope = parsed.scope;
+	let clientSecret = parsed.client_secret;
 
 	if (!clientSecret) {
 		const auth = req.headers.get("authorization");
@@ -79,7 +83,7 @@ export async function POST(req: Request): Promise<Response> {
 				response = await exchangeClientCredentials({
 					clientId: tokenRequest.clientId,
 					...(clientSecret ? { clientSecret } : {}),
-					...(body.scope ? { scope: body.scope } : {}),
+					...(parsed.scope ? { scope: parsed.scope } : {}),
 				});
 				break;
 			case "refresh_token":

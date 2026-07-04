@@ -1,8 +1,13 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { verifyLdapUserBind } from "@/lib/ldap";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { ldapBindSchema } from "@/lib/schemas/auth";
 
 export async function POST(req: Request): Promise<Response> {
-	const body = (await req.json()) as { username?: string; password?: string; dn?: string };
+	const body = await parseJsonSafe(req, ldapBindSchema);
+	if (body instanceof Response) {
+		return body;
+	}
 	const username = body.username ?? body.dn;
 	const password = body.password;
 

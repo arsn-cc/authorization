@@ -1,6 +1,8 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { authenticateUser, RADIUS_CODE, type RadiusConfig } from "@/lib/radius";
 import { getAccountUser } from "@/pages/_api/account/auth";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { radiusAuthSchema } from "@/lib/schemas/auth";
 
 export async function POST(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -8,13 +10,10 @@ export async function POST(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "unauthorized" }, { status: 401 }));
 	}
 
-	const body = (await req.json()) as {
-		username?: string;
-		password?: string;
-		nasIdentifier?: string;
-		nasIpAddress?: string;
-		secret?: string;
-	};
+	const body = await parseJsonSafe(req, radiusAuthSchema);
+	if (body instanceof Response) {
+		return body;
+	}
 
 	if (!body.username || !body.password) {
 		return withSecurityHeaders(Response.json({ error: "missing_credentials" }, { status: 400 }));

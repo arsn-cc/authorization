@@ -1,0 +1,99 @@
+import { z } from "zod";
+
+export const createPermissionSchema = z.object({
+	name: z.string().min(1),
+	description: z.string().nullable().optional(),
+});
+
+export const updatePermissionSchema = z.object({
+	name: z.string().optional(),
+	description: z.string().nullable().optional(),
+});
+
+export const createRoleSchema = z.object({
+	name: z.string().min(1),
+	description: z.string().nullable().optional(),
+	permissions: z.string().optional().default("[]"),
+});
+
+export const updateRoleSchema = z.object({
+	name: z.string().optional(),
+	description: z.string().nullable().optional(),
+	permissions: z.string().optional(),
+});
+
+export const createUserSchema = z.object({
+	username: z.string().min(3).max(64),
+	password: z.string().min(8).optional(),
+	name: z.string().optional(),
+	roleId: z.number().nullable().optional(),
+});
+
+export const updateUserSchema = z.object({
+	name: z.string().nullable().optional(),
+	givenName: z.string().nullable().optional(),
+	familyName: z.string().nullable().optional(),
+	displayName: z.string().nullable().optional(),
+	nickname: z.string().nullable().optional(),
+	image: z.string().nullable().optional(),
+	phoneNumber: z.string().nullable().optional(),
+	profileUrl: z.string().nullable().optional(),
+	websiteUrl: z.string().nullable().optional(),
+	address: z.string().nullable().optional(),
+	externalId: z.string().nullable().optional(),
+	preferredLanguage: z.string().nullable().optional(),
+	locale: z.string().nullable().optional(),
+	timezone: z.string().nullable().optional(),
+	loginShell: z.string().nullable().optional(),
+	gecos: z.string().nullable().optional(),
+	roleId: z.number().nullable().optional(),
+	username: z.string().optional(),
+	password: z.string().optional(),
+});
+
+export const createClientSchema = z.object({
+	clientId: z.string().min(1),
+	type: z.string().min(1),
+	name: z.string().min(1),
+	clientSecret: z.string().optional(),
+	redirectUris: z.string().nullable().optional(),
+	grants: z.string().nullable().optional(),
+	scopes: z.string().optional().default("openid profile email"),
+	requireConsent: z.boolean().optional(),
+	pkceRequired: z.boolean().nullable().optional(),
+	accessTokenTtl: z.number().nullable().optional(),
+	refreshTokenRotationEnabled: z.boolean().nullable().optional(),
+	reuseRefreshTokens: z.boolean().nullable().optional(),
+	tokenEndpointAuthMethod: z.string().nullable().optional(),
+	dpopBound: z.boolean().nullable().optional(),
+	entityId: z.string().nullable().optional(),
+	acsUrl: z.string().nullable().optional(),
+	samlCertificate: z.string().nullable().optional(),
+	samlBinding: z.string().nullable().optional(),
+});
+
+export const updateClientSchema = z.object({
+	name: z.string().optional(),
+	redirectUris: z.string().nullable().optional(),
+	grants: z.string().nullable().optional(),
+	scopes: z.string().optional(),
+	clientSecret: z.string().nullable().optional(),
+	requireConsent: z.boolean().nullable().optional(),
+	pkceRequired: z.boolean().nullable().optional(),
+	accessTokenTtl: z.number().nullable().optional(),
+	refreshTokenRotationEnabled: z.boolean().nullable().optional(),
+	reuseRefreshTokens: z.boolean().nullable().optional(),
+	tokenEndpointAuthMethod: z.string().nullable().optional(),
+	dpopBound: z.boolean().nullable().optional(),
+	entityId: z.string().nullable().optional(),
+	acsUrl: z.string().nullable().optional(),
+	samlCertificate: z.string().nullable().optional(),
+	samlBinding: z.string().nullable().optional(),
+});
+
+export const createPatSchema = z.object({
+	name: z.string().min(1),
+	scopes: z.string().optional().default("admin:read"),
+});
+
+export const updateSettingsSchema = z.record(z.string(), z.string().nullable().optional());

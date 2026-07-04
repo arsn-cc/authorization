@@ -1,6 +1,10 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { listGroups, createGroup, type ScimSearchParams } from "@/lib/scim";
 import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { z } from "zod";
+
+const scimBodySchema = z.object({}).passthrough();
 
 export async function GET(req: Request): Promise<Response> {
 	const result = await requirePermission(req, AdminPermission.UsersRead);
@@ -28,7 +32,10 @@ export async function POST(req: Request): Promise<Response> {
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
-	const group = await createGroup(body as Parameters<typeof createGroup>[0]);
+	const parsed = await parseJsonSafe(req, scimBodySchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+	const group = await createGroup(parsed as Parameters<typeof createGroup>[0]);
 	return withSecurityHeaders(Response.json(group, { status: 201 }));
 }

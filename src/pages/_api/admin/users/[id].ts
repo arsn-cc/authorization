@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { updateUserSchema } from "@/lib/schemas/admin";
 import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -57,7 +59,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
+	const parsed = await parseJsonSafe(req, updateUserSchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
 	const userId = Number(params.id);
 	const db = await getDb();
 
@@ -83,30 +89,30 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	] as const;
 
 	for (const field of stringFields) {
-		if (body[field] !== undefined) {
-			updates[field] = body[field] === null ? null : (body[field] as string);
+		if (parsed[field] !== undefined) {
+			updates[field] = parsed[field];
 		}
 	}
 
-	if (body.roleId !== undefined) {
-		updates.roleId = body.roleId === null ? null : Number(body.roleId);
+	if (parsed.roleId !== undefined) {
+		updates.roleId = parsed.roleId;
 	}
 
-	if (body.username && typeof body.username === "string" && isValidUsername(body.username)) {
-		const email = usernameToEmail(body.username);
+	if (parsed.username && isValidUsername(parsed.username)) {
+		const email = usernameToEmail(parsed.username);
 		const [existing] = await db
 			.select()
 			.from(schema.user)
-			.where(and(eq(schema.user.username, body.username), eq(schema.user.email, email)))
+			.where(and(eq(schema.user.username, parsed.username), eq(schema.user.email, email)))
 			.limit(1);
 		if (!existing) {
-			updates.username = body.username;
+			updates.username = parsed.username;
 			updates.email = email;
 		}
 	}
 
-	if (body.password && typeof body.password === "string" && isValidPassword(body.password)) {
-		updates.passwordHash = hashPassword(body.password);
+	if (parsed.password && isValidPassword(parsed.password)) {
+		updates.passwordHash = hashPassword(parsed.password);
 	}
 
 	updates.updatedAt = new Date();

@@ -1,10 +1,18 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { z } from "zod";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { createPatSchema } from "@/lib/schemas/admin";
 import { and, count, eq, desc, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { hashToken } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "./auth";
+
+const createPatBodySchema = createPatSchema.extend({
+	userId: z.number().optional(),
+	expiresInDays: z.number().optional(),
+});
 
 export async function GET(req: Request): Promise<Response> {
 	const result = await requirePermission(req, AdminPermission.TokensRead);
@@ -62,9 +70,12 @@ export async function POST(req: Request): Promise<Response> {
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
-	const targetUserId = body.userId ? Number(body.userId) : result.userId;
-	const name = body.name as string;
+	const parsed = await parseJsonSafe(req, createPatBodySchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
+	const targetUserId = parsed.userId ?? result.userId;
 
 	if (targetUserId !== result.userId) {
 		const writeCheck = await requirePermission(req, AdminPermission.UsersWrite);
@@ -74,15 +85,10 @@ export async function POST(req: Request): Promise<Response> {
 	}
 
 	const userId = targetUserId;
-
-	if (!name || typeof name !== "string") {
-		return withSecurityHeaders(Response.json({ error: "missing_name" }, { status: 400 }));
-	}
-
 	const db = await getDb();
 	const token = `pat_${randomBytes(32).toString("hex")}`;
-	const scopes = (body.scopes as string) ?? "admin:read";
-	const expiresIn = body.expiresInDays ? Number(body.expiresInDays) : null;
+	const { name, scopes } = parsed;
+	const expiresIn = parsed.expiresInDays ?? null;
 
 	const [inserted] = await db
 		.insert(schema.personalAccessToken)

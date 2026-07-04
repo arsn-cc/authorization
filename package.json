@@ -55,7 +55,8 @@
 		"vaul": "^1.1.2",
 		"waku": "1.0.0-beta.4",
 		"waku-jotai": "^0.5.0",
-		"xml-crypto": "^6.1.2"
+		"xml-crypto": "^6.1.2",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@react-email/ui": "^6.6.5",

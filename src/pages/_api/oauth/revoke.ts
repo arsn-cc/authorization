@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseFormSafe } from "@/lib/http/validate";
+import { revokeFormSchema } from "@/lib/schemas/oauth";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -20,14 +22,14 @@ function clientSecretFromBasicAuth(req: Request): string | undefined {
 }
 
 export async function POST(req: Request): Promise<Response> {
-	const form = await req.formData();
-	const token = form.get("token") as string;
-	const clientId = form.get("client_id") as string | null;
-	const clientSecret = (form.get("client_secret") as string | undefined) ?? clientSecretFromBasicAuth(req);
-
-	if (!token || !clientId) {
-		return withSecurityHeaders(Response.json({ error: "invalid_request" }, { status: 400 }));
+	const parsed = await parseFormSafe(req, revokeFormSchema);
+	if (parsed instanceof Response) {
+		return parsed;
 	}
+
+	const token = parsed.token;
+	const clientId = parsed.client_id;
+	const clientSecret = parsed.client_secret ?? clientSecretFromBasicAuth(req);
 
 	const client = await authenticateClient(clientId, clientSecret);
 	if (!client) {

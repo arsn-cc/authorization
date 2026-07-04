@@ -1,4 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
+import { parseJsonSafe } from "@/lib/http/validate";
+import { updateClientSchema } from "@/lib/schemas/admin";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -31,48 +33,63 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		return result;
 	}
 
-	const body = (await req.json()) as Record<string, unknown>;
+	const parsed = await parseJsonSafe(req, updateClientSchema);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
 	const db = await getDb();
 	const updates: Record<string, unknown> = {};
 
-	const allowedFields = [
-		"name",
-		"redirectUris",
-		"grants",
-		"scopes",
-		"clientSecret",
-		"requireConsent",
-		"pkceRequired",
-		"accessTokenTtl",
-		"refreshTokenRotationEnabled",
-		"reuseRefreshTokens",
-		"tokenEndpointAuthMethod",
-		"dpopBound",
-		"entityId",
-		"acsUrl",
-		"samlCertificate",
-		"samlBinding",
-	] as const;
-
-	for (const field of allowedFields) {
-		if (body[field] !== undefined) {
-			const val = body[field];
-			if (
-				field === "requireConsent" ||
-				field === "pkceRequired" ||
-				field === "refreshTokenRotationEnabled" ||
-				field === "reuseRefreshTokens" ||
-				field === "dpopBound"
-			) {
-				updates[field] = val === true ? 1 : val === false ? 0 : null;
-			} else if (field === "accessTokenTtl") {
-				updates[field] = val ? Number(val) : null;
-			} else if (field === "clientSecret") {
-				updates[field] = val === null ? null : hashToken(val as string);
-			} else {
-				updates[field] = val === null ? null : (val as string);
-			}
-		}
+	if (parsed.name !== undefined) {
+		updates.name = parsed.name;
+	}
+	if (parsed.redirectUris !== undefined) {
+		updates.redirectUris = parsed.redirectUris;
+	}
+	if (parsed.grants !== undefined) {
+		updates.grants = parsed.grants;
+	}
+	if (parsed.scopes !== undefined) {
+		updates.scopes = parsed.scopes;
+	}
+	if (parsed.clientSecret !== undefined) {
+		updates.clientSecret = parsed.clientSecret === null ? null : hashToken(parsed.clientSecret);
+	}
+	if (parsed.requireConsent !== undefined) {
+		updates.requireConsent = parsed.requireConsent === true ? 1 : parsed.requireConsent === false ? 0 : null;
+	}
+	if (parsed.pkceRequired !== undefined) {
+		updates.pkceRequired = parsed.pkceRequired === true ? 1 : parsed.pkceRequired === false ? 0 : null;
+	}
+	if (parsed.accessTokenTtl !== undefined) {
+		updates.accessTokenTtl = parsed.accessTokenTtl;
+	}
+	if (parsed.refreshTokenRotationEnabled !== undefined) {
+		updates.refreshTokenRotationEnabled =
+			parsed.refreshTokenRotationEnabled === true ? 1 : parsed.refreshTokenRotationEnabled === false ? 0 : null;
+	}
+	if (parsed.reuseRefreshTokens !== undefined) {
+		updates.reuseRefreshTokens =
+			parsed.reuseRefreshTokens === true ? 1 : parsed.reuseRefreshTokens === false ? 0 : null;
+	}
+	if (parsed.tokenEndpointAuthMethod !== undefined) {
+		updates.tokenEndpointAuthMethod = parsed.tokenEndpointAuthMethod;
+	}
+	if (parsed.dpopBound !== undefined) {
+		updates.dpopBound = parsed.dpopBound === true ? 1 : parsed.dpopBound === false ? 0 : null;
+	}
+	if (parsed.entityId !== undefined) {
+		updates.entityId = parsed.entityId;
+	}
+	if (parsed.acsUrl !== undefined) {
+		updates.acsUrl = parsed.acsUrl;
+	}
+	if (parsed.samlCertificate !== undefined) {
+		updates.samlCertificate = parsed.samlCertificate;
+	}
+	if (parsed.samlBinding !== undefined) {
+		updates.samlBinding = parsed.samlBinding;
 	}
 
 	const [updated] = await db
