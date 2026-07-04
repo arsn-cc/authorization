@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { UseSend } from "usesend-js";
 
 export interface SendEmailInput {
 	to: string;
@@ -7,42 +7,39 @@ export interface SendEmailInput {
 }
 
 export type SendEmailResult =
-	| { success: true; messageId: string }
+	| { success: true; id: string }
 	| { success: false; error: { code: string; message: string } };
 
-let _transport: nodemailer.Transporter | null = null;
+const apiKey = process.env.USESEND_API_KEY ?? "";
+const baseUrl = process.env.USESEND_BASE_URL;
+const fromAddress = (process.env.USESEND_FROM_ADDRESS ?? "noreply@arsn.cc").replace(/[\r\n]/g, "").trim();
+const fromName = (process.env.USESEND_FROM_NAME ?? "ARSN").replace(/[\r\n]/g, "").trim();
 
-function getTransport(): nodemailer.Transporter {
-	if (!_transport) {
-		_transport = nodemailer.createTransport({
-			host: process.env.SMTP_HOST,
-			port: Number(process.env.SMTP_PORT) || 587,
-			secure: process.env.SMTP_SECURE === "true",
-			auth: {
-				user: process.env.SMTP_USER,
-				pass: process.env.SMTP_PASS,
-			},
-		});
+let _client: UseSend | null = null;
+
+function getClient(): UseSend {
+	if (!_client) {
+		_client = baseUrl ? new UseSend(apiKey, baseUrl) : new UseSend(apiKey);
 	}
-	return _transport;
+	return _client;
 }
 
-const rawName = process.env.SMTP_FROM_NAME ?? "ARSN";
-const rawAddress = process.env.SMTP_FROM_ADDRESS ?? "noreply@arsn.cc";
-const fromName = rawName.replace(/[\r\n]/g, "").trim();
-const fromAddress = rawAddress.replace(/[\r\n]/g, "").trim();
-
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+	if (!apiKey) {
+		return { success: false, error: { code: "MISSING_API_KEY", message: "USESEND_API_KEY is not set" } };
+	}
+
 	try {
-		const info = await getTransport().sendMail({
-			from: { name: fromName, address: fromAddress },
+		const response = await getClient().emails.send({
 			to: input.to,
+			from: fromName ? `${fromName} <${fromAddress}>` : fromAddress,
 			subject: input.subject,
 			html: input.html,
 		});
-		return { success: true, messageId: info.messageId };
+		const emailId = (response as { emailId?: string }).emailId ?? "";
+		return { success: true, id: emailId };
 	} catch (cause) {
-		const genericMsg = cause instanceof Error ? cause.message : "Unknown SMTP error";
-		return { success: false, error: { code: "SMTP_ERROR", message: genericMsg } };
+		const genericMsg = cause instanceof Error ? cause.message : "Unknown useSend error";
+		return { success: false, error: { code: "USESEND_ERROR", message: genericMsg } };
 	}
 }
