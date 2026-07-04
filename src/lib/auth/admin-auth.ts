@@ -108,7 +108,6 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 	};
 }
 
-/** Verify that the request is authenticated AND the user's role grants the required permission. */
 export async function requirePermission(req: Request, permission: AdminPermission): Promise<AdminUser | Response> {
 	const admin = await getAdminUser(req);
 	if (!admin) {

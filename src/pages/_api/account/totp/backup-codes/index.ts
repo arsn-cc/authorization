@@ -2,7 +2,7 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getAccountUser, unauthorized } from "../../auth";
+import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { generateBackupCodes, hashBackupCode } from "@/lib/auth/totp";
 import { invalidateUser } from "@/lib/auth/cache";
 

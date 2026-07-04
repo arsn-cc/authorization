@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import { sessionKey } from "@/lib/auth/utils";
-import { getAccountUser, unauthorized } from "../auth";
+import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
 	const authed = await getAccountUser(req);

@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -25,12 +24,12 @@ export function getDefaultServerConfig(): LdapServerConfig {
 	};
 }
 
-export function extractEmailFromDn(dn: string): string | null {
+function extractEmailFromDn(dn: string): string | null {
 	const match = dn.match(/^(?:uid|cn)=([^,]+)/i);
 	return match ? match[1]! : null;
 }
 
-export function userDn(email: string, domain: string): string {
+function userDn(email: string, domain: string): string {
 	const parts = domain
 		.split(".")
 		.map((p) => `dc=${p}`)
@@ -38,7 +37,7 @@ export function userDn(email: string, domain: string): string {
 	return `uid=${email},${parts}`;
 }
 
-export function groupDn(name: string, domain: string): string {
+function groupDn(name: string, domain: string): string {
 	const parts = domain
 		.split(".")
 		.map((p) => `dc=${p}`)
@@ -46,7 +45,7 @@ export function groupDn(name: string, domain: string): string {
 	return `cn=${name},${parts}`;
 }
 
-export function mapUserToLdapEntry(
+function mapUserToLdapEntry(
 	user: {
 		id: number;
 		email: string;
@@ -101,7 +100,7 @@ export function mapUserToLdapEntry(
 	return attrs;
 }
 
-export function mapRoleToLdapEntry(
+function mapRoleToLdapEntry(
 	role: { id: number; name: string; description: string | null },
 	memberDns: string[],
 	domain: string,
@@ -114,28 +113,6 @@ export function mapRoleToLdapEntry(
 		{ type: "gidNumber", vals: [String(role.id + 1000)] },
 		...memberDns.map((dn) => ({ type: "uniqueMember" as const, vals: [dn] })),
 	];
-}
-
-function safeCompare(a: string, b: string): boolean {
-	const bufA = Buffer.from(a);
-	const bufB = Buffer.from(b);
-	if (bufA.length !== bufB.length) {
-		return false;
-	}
-	return timingSafeEqual(bufA, bufB);
-}
-
-export async function verifyLdapBind(
-	adminDn: string,
-	adminPassword: string,
-	name: string,
-	password: string,
-): Promise<boolean> {
-	if (safeCompare(name, adminDn)) {
-		return safeCompare(adminPassword, password);
-	}
-
-	return verifyLdapUserBind(name, password);
 }
 
 export async function verifyLdapUserBind(name: string, password: string): Promise<boolean> {

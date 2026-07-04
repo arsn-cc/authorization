@@ -30,18 +30,3 @@ export interface CasTicketResult {
 	userId: number;
 	username: string;
 }
-
-export class CasError extends Error {
-	code: string;
-	constructor(code: string, message: string) {
-		super(message);
-		this.name = "CasError";
-		this.code = code;
-	}
-}
-
-export const CasErrorCodes = {
-	INVALID_TICKET: "INVALID_TICKET",
-	INVALID_SERVICE: "INVALID_SERVICE",
-	TICKET_EXPIRED: "TICKET_EXPIRED",
-} as const;

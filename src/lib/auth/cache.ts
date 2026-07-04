@@ -3,9 +3,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import type { UserResult } from "./types";
-import { sessionKey, sessionTtlSeconds, hashToken } from "./utils";
-
-export { sessionKey, sessionTtlSeconds };
+import { sessionTtlSeconds, hashToken } from "./utils";
 
 // ── TTL constants (seconds) ────────────────────────────────────────
 

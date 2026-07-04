@@ -2,7 +2,7 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { requirePermission, AdminPermission } from "../../../auth";
+import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getCache } from "@/lib/cache";
 import { sessionKey } from "@/lib/auth/utils";

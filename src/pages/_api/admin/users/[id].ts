@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import { usernameToEmail, hashPassword, isValidUsername, isValidPassword, sessionKey } from "@/lib/auth/utils";
-import { requirePermission, AdminPermission } from "../auth";
+import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
 	const result = await requirePermission(req, AdminPermission.UsersRead);

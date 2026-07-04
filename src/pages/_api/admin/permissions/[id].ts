@@ -4,7 +4,7 @@ import { updatePermissionSchema } from "@/lib/schemas/admin";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { requirePermission, AdminPermission } from "../auth";
+import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
 	const result = await requirePermission(req, AdminPermission.PermissionsRead);

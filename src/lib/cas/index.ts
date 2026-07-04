@@ -6,7 +6,6 @@ import { hashToken } from "@/lib/auth/utils";
 import type { CasLoginParams, CasTicketResult } from "./types";
 
 export type { CasTicket, CasServerConfig, CasLoginParams, CasValidateParams, CasTicketResult } from "./types";
-export { CasError, CasErrorCodes } from "./types";
 
 function escapeXml(s: string): string {
 	return s

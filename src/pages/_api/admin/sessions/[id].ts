@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import { sessionKey } from "@/lib/auth/utils";
-import { requirePermission, AdminPermission } from "../auth";
+import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
 	const result = await requirePermission(req, AdminPermission.SessionsDelete);

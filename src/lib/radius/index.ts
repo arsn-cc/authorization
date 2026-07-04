@@ -8,7 +8,6 @@ import { RADIUS_CODE, RADIUS_ATTR } from "./types";
 
 export {
 	RADIUS_CODE,
-	RADIUS_ATTR,
 	type RadiusAttribute,
 	type RadiusPacket,
 	type RadiusConfig,
@@ -17,51 +16,6 @@ export {
 
 function md5(data: Buffer): Buffer {
 	return createHash("md5").update(data).digest();
-}
-
-export function encodeAttribute(type: number, value: Buffer | string | number): Buffer {
-	let val: Buffer;
-	if (typeof value === "string") {
-		val = Buffer.from(value, "utf8");
-	} else if (typeof value === "number") {
-		val = Buffer.alloc(4);
-		val.writeUInt32BE(value, 0);
-	} else {
-		val = value;
-	}
-	const length = 2 + val.length;
-	const buf = Buffer.alloc(length);
-	buf[0] = type;
-	buf[1] = length;
-	val.copy(buf, 2);
-	return buf;
-}
-
-export function decodeAttribute(attr: RadiusAttribute): string | number | Buffer {
-	switch (attr.type) {
-		case RADIUS_ATTR.NAS_IP_ADDRESS:
-		case RADIUS_ATTR.FRAMED_IP_ADDRESS:
-		case RADIUS_ATTR.FRAMED_IP_NETMASK:
-			return `${attr.value[0]}.${attr.value[1]}.${attr.value[2]}.${attr.value[3]}`;
-		case RADIUS_ATTR.NAS_PORT:
-		case RADIUS_ATTR.SERVICE_TYPE:
-		case RADIUS_ATTR.FRAMED_PROTOCOL:
-		case RADIUS_ATTR.FRAMED_MTU:
-		case RADIUS_ATTR.SESSION_TIMEOUT:
-		case RADIUS_ATTR.IDLE_TIMEOUT:
-		case RADIUS_ATTR.ACCT_STATUS_TYPE:
-		case RADIUS_ATTR.ACCT_DELAY_TIME:
-		case RADIUS_ATTR.ACCT_INPUT_OCTETS:
-		case RADIUS_ATTR.ACCT_OUTPUT_OCTETS:
-		case RADIUS_ATTR.ACCT_SESSION_TIME:
-		case RADIUS_ATTR.ACCT_INPUT_PACKETS:
-		case RADIUS_ATTR.ACCT_OUTPUT_PACKETS:
-		case RADIUS_ATTR.ACCT_TERMINATE_CAUSE:
-		case RADIUS_ATTR.NAS_PORT_TYPE:
-			return attr.value.readUInt32BE(0);
-		default:
-			return attr.value;
-	}
 }
 
 function findAttribute(attrs: RadiusAttribute[], type: number): RadiusAttribute | undefined {
@@ -73,7 +27,7 @@ function getStringAttr(attrs: RadiusAttribute[], type: number): string | undefin
 	return attr ? attr.value.toString("utf8") : undefined;
 }
 
-export function decodeUserPassword(encrypted: Buffer, requestAuthenticator: Buffer, secret: string): string {
+function decodeUserPassword(encrypted: Buffer, requestAuthenticator: Buffer, secret: string): string {
 	const secretBuf = Buffer.from(secret, "utf8");
 	const passwordLen = encrypted.length;
 	const result = Buffer.alloc(passwordLen);
@@ -91,24 +45,7 @@ export function decodeUserPassword(encrypted: Buffer, requestAuthenticator: Buff
 	return nullIndex >= 0 ? result.toString("utf8", 0, nullIndex) : result.toString("utf8");
 }
 
-export function encodeUserPassword(password: string, requestAuthenticator: Buffer, secret: string): Buffer {
-	const secretBuf = Buffer.from(secret, "utf8");
-	const paddedLen = Math.ceil(password.length / 16) * 16;
-	const padded = Buffer.alloc(paddedLen, 0);
-	Buffer.from(password, "utf8").copy(padded);
-
-	const result = Buffer.alloc(paddedLen);
-	for (let i = 0; i < paddedLen; i += 16) {
-		const prev = i === 0 ? requestAuthenticator : result.subarray(i - 16, i);
-		const hash = md5(Buffer.concat([secretBuf, prev]));
-		for (let j = 0; j < 16; j++) {
-			result[i + j] = padded[i + j]! ^ hash[j]!;
-		}
-	}
-	return result;
-}
-
-export function createResponseAuthenticator(
+function createResponseAuthenticator(
 	packet: RadiusPacket,
 	code: RadiusCode,
 	attributes: RadiusAttribute[],
@@ -136,36 +73,6 @@ function encodeAttributeRaw(attr: RadiusAttribute): Buffer {
 	buf[1] = 2 + attr.value.length;
 	attr.value.copy(buf, 2);
 	return buf;
-}
-
-export function createMessageAuthenticator(packet: RadiusPacket, secret: string): Buffer {
-	const secretBuf = Buffer.from(secret, "utf8");
-	const tempPacket = encodePacketRaw(packet.code, packet.identifier, packet.authenticator, packet.attributes, secret);
-	const code = tempPacket[0]!;
-	const id = tempPacket[1]!;
-	const origAuth = tempPacket.subarray(4, 20);
-	const attrsWithDummy = packet.attributes.map((attr) => {
-		if (attr.type === RADIUS_ATTR.MESSAGE_AUTHENTICATOR) {
-			return { type: attr.type, value: Buffer.alloc(16) };
-		}
-		return attr;
-	});
-	const attrBuf = Buffer.concat(attrsWithDummy.map((a) => encodeAttributeRaw(a)));
-	const body = Buffer.concat([Buffer.from([code]), Buffer.from([id]), Buffer.alloc(2), origAuth, attrBuf, secretBuf]);
-	const msgAuthIndex = attrsWithDummy.findIndex((a) => a.type === RADIUS_ATTR.MESSAGE_AUTHENTICATOR);
-	if (msgAuthIndex < 0) {
-		return Buffer.alloc(16);
-	}
-	return md5(body);
-}
-
-export function verifyMessageAuthenticator(packet: RadiusPacket, secret: string): boolean {
-	const msgAuth = findAttribute(packet.attributes, RADIUS_ATTR.MESSAGE_AUTHENTICATOR);
-	if (!msgAuth || msgAuth.value.length !== 16) {
-		return false;
-	}
-	const expected = createMessageAuthenticator(packet, secret);
-	return expected.equals(msgAuth.value);
 }
 
 export function encodePacket(

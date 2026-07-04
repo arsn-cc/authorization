@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { hashToken } from "@/lib/auth/utils";
-import { requirePermission, AdminPermission } from "@/pages/_api/admin/auth";
+import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function POST(req: Request): Promise<Response> {
 	const authResult = await requirePermission(req, AdminPermission.ClientsWrite);

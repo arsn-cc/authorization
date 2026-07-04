@@ -1,4 +1,4 @@
-export const SECURITY_HEADERS: Record<string, string> = {
+const SECURITY_HEADERS: Record<string, string> = {
 	"x-content-type-options": "nosniff",
 	"x-frame-options": "DENY",
 	"x-xss-protection": "0",
@@ -13,16 +13,4 @@ export function withSecurityHeaders(response: Response): Response {
 		response.headers.set(key, value);
 	}
 	return response;
-}
-
-export function securityHeadersInit(): HeadersInit {
-	return { ...SECURITY_HEADERS };
-}
-
-export function secureJson(data: unknown, init?: ResponseInit): Response {
-	return withSecurityHeaders(Response.json(data, init));
-}
-
-export function secureRedirect(location: string, status = 302): Response {
-	return withSecurityHeaders(new Response(null, { status, headers: { Location: location } }));
 }

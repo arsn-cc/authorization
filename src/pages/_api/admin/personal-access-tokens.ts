@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { hashToken } from "@/lib/auth/utils";
-import { requirePermission, AdminPermission } from "./auth";
+import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 const createPatBodySchema = createPatSchema.extend({
 	userId: z.number().optional(),

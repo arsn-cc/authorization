@@ -1,6 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { authenticateUser, RADIUS_CODE, type RadiusConfig } from "@/lib/radius";
-import { getAccountUser } from "@/pages/_api/account/auth";
+import { getAccountUser } from "@/lib/auth/account-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { radiusAuthSchema } from "@/lib/schemas/auth";
 

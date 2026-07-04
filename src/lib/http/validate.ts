@@ -1,18 +1,6 @@
 import { z } from "zod";
 import { withSecurityHeaders } from "./response";
 
-export class ValidationError extends Error {
-	public constructor(public readonly errors: z.ZodIssue[]) {
-		super("validation failed");
-		this.name = "ValidationError";
-	}
-}
-
-export function parseJson<T>(request: Request, schema: z.ZodSchema<T>): T {
-	const raw = request.json() as unknown;
-	return schema.parse(raw);
-}
-
 export async function parseJsonSafe<T>(request: Request, schema: z.ZodSchema<T>): Promise<T | Response> {
 	try {
 		const raw = await request.json();

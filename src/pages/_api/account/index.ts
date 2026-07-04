@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { invalidateUser } from "@/lib/auth/cache";
-import { getAccountUser, unauthorized } from "./auth";
+import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { profileUpdateSchema } from "@/lib/schemas/auth";
 

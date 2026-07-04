@@ -5,7 +5,7 @@ import { count, eq, asc, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { hashToken } from "@/lib/auth/utils";
-import { requirePermission, AdminPermission } from "./auth";
+import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function GET(req: Request): Promise<Response> {
 	const result = await requirePermission(req, AdminPermission.ClientsRead);

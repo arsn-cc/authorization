@@ -1,18 +1,11 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { searchUsers, getDefaultServerConfig } from "@/lib/ldap";
-import { getAccountUser } from "@/pages/_api/account/auth";
-import { parseJsonSafe } from "@/lib/http/validate";
-import { ldapSearchSchema } from "@/lib/schemas/auth";
+import { getAccountUser } from "@/lib/auth/account-auth";
 
 export async function POST(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
 	if (!authed) {
 		return withSecurityHeaders(Response.json({ error: "unauthorized" }, { status: 401 }));
-	}
-
-	const _body = await parseJsonSafe(req, ldapSearchSchema);
-	if (_body instanceof Response) {
-		return _body;
 	}
 
 	const config = getDefaultServerConfig();

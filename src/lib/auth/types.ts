@@ -19,13 +19,6 @@ export class InvalidCredentialsError extends AuthError {
 	}
 }
 
-export class SessionNotFoundError extends AuthError {
-	constructor() {
-		super("Session not found");
-		this.name = "SessionNotFoundError";
-	}
-}
-
 export interface RegisterInput {
 	username: string;
 	password: string;
@@ -66,10 +59,6 @@ export interface ResetPasswordInput {
 
 export interface RequestEmailTwoFactorInput {
 	email: string;
-}
-
-export interface VerifyEmailTwoFactorInput {
-	token: string;
 }
 
 export interface UserResult {
@@ -117,10 +106,6 @@ export interface PendingLoginResult {
 export interface VerifyTotpInput {
 	pendingAuthToken: string;
 	totpCode: string;
-}
-
-export interface VerifyEmailTwoFactorInput {
-	token: string;
 }
 
 export interface VerifyEmailTwoFactorAndLoginInput {

@@ -5,7 +5,7 @@ import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
 import { verifyPassword, hashPassword, isValidPassword, sessionKey } from "@/lib/auth/utils";
 import { invalidateUser } from "@/lib/auth/cache";
-import { getAccountUser, unauthorized } from "./auth";
+import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { passwordChangeSchema } from "@/lib/schemas/auth";
 
