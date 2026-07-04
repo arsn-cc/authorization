@@ -50,6 +50,7 @@ import {
 } from "./cache";
 import { getSetting } from "@/lib/settings";
 import { isPreview } from "@/lib/email/preview";
+import { z } from "zod";
 import { renderWelcome, renderLoginNotification, renderPasswordReset, renderTwoFactor } from "@/lib/email";
 import { sendEmail } from "@/lib/email/send";
 import {
@@ -714,9 +715,12 @@ export async function getSession(token: string): Promise<AuthResult<Authenticate
 
 // ── Email verification ──────────────────────────────────────────────
 
+const tokenSchema = z.string().min(1, "Token is required");
+
 export async function verifyEmail(token: string): Promise<AuthResult<true>> {
-	if (!token) {
-		return err(new AuthError("Verification token is required"), "VALIDATION_ERROR");
+	const tokenResult = tokenSchema.safeParse(token);
+	if (!tokenResult.success) {
+		return err(new AuthError(tokenResult.error.issues[0]!.message), "VALIDATION_ERROR");
 	}
 
 	const db = await getDb();
@@ -752,11 +756,23 @@ export async function verifyEmail(token: string): Promise<AuthResult<true>> {
 
 // ── Account deletion ────────────────────────────────────────────────
 
+const emailAddressSchema = z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email address");
+const positiveIntSchema = z.number().int().positive("userId must be a positive integer");
+
 export async function requestAccountDeletion(
 	userId: number,
 	email: string,
 	username: string | null,
 ): Promise<AuthResult<true>> {
+	const idResult = positiveIntSchema.safeParse(userId);
+	if (!idResult.success) {
+		return err(new AuthError(idResult.error.issues[0]!.message), "VALIDATION_ERROR");
+	}
+	const emailResult = emailAddressSchema.safeParse(email);
+	if (!emailResult.success) {
+		return err(new AuthError(emailResult.error.issues[0]!.message), "VALIDATION_ERROR");
+	}
+
 	if (isPreview) {
 		return ok(true as const);
 	}
@@ -767,8 +783,9 @@ export async function requestAccountDeletion(
 }
 
 export async function confirmAccountDeletion(token: string): Promise<AuthResult<true>> {
-	if (!token) {
-		return err(new AuthError("Deletion token is required"), "VALIDATION_ERROR");
+	const tokenResult = tokenSchema.safeParse(token);
+	if (!tokenResult.success) {
+		return err(new AuthError(tokenResult.error.issues[0]!.message), "VALIDATION_ERROR");
 	}
 
 	const db = await getDb();

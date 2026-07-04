@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
 	renderPasswordChanged,
 	renderEmailChanged,
@@ -24,10 +25,18 @@ import { generateToken, hashSecret, inMinutes } from "./utils";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailSchema = z.string().regex(EMAIL_REGEX, "Invalid email address");
+const userIdSchema = z.number().int().positive("userId must be a positive integer");
+
 const VERIFY_EMAIL_TTL_MINUTES = 60;
 const ACCOUNT_DELETION_TTL_MINUTES = 60;
 
 type EmailResult = { success: true } | { success: false; error: string };
+
+function validationError(message: string): EmailResult {
+	return { success: false, error: message };
+}
 
 async function send(name: string, to: string, subject: string, html: string): Promise<EmailResult> {
 	if (isPreview) {
@@ -59,6 +68,10 @@ function withToken(urlBase: string, token: string): string {
 // ── Password changed ─────────────────────────────────────────────────
 
 export async function sendPasswordChangedEmail(to: string, props: PasswordChangedEmailProps): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
 	const html = await renderPasswordChanged(props);
 	return send("password_changed", to, "Your ARSN password has been changed", html);
 }
@@ -66,6 +79,10 @@ export async function sendPasswordChangedEmail(to: string, props: PasswordChange
 // ── Email changed ────────────────────────────────────────────────────
 
 export async function sendEmailChangedEmail(to: string, props: EmailChangedEmailProps): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
 	const html = await renderEmailChanged(props);
 	return send("email_changed", to, "Your ARSN email address has been changed", html);
 }
@@ -96,6 +113,14 @@ export async function sendVerifyEmailForUser(
 	userId: number,
 	username: string | null,
 ): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
+	const idResult = userIdSchema.safeParse(userId);
+	if (!idResult.success) {
+		return validationError("userId: " + idResult.error.issues[0]!.message);
+	}
 	const token = generateToken();
 	const tokenHash = hashSecret(token);
 	const db = await getDb();
@@ -120,6 +145,14 @@ export async function sendAccountDeletionConfirmEmail(
 	userId: number,
 	username: string | null,
 ): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
+	const idResult = userIdSchema.safeParse(userId);
+	if (!idResult.success) {
+		return validationError("userId: " + idResult.error.issues[0]!.message);
+	}
 	const token = generateToken();
 	const tokenHash = hashSecret(token);
 	const db = await getDb();
@@ -138,6 +171,10 @@ export async function sendAccountDeletionConfirmEmail(
 }
 
 export async function sendAccountDeletedEmail(to: string, props: AccountDeletedEmailProps): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
 	const html = await renderAccountDeleted(props);
 	return send("account_deleted", to, "Your ARSN account has been deleted", html);
 }
@@ -146,6 +183,10 @@ export async function sendAccountDeletedAdminEmail(
 	to: string,
 	props: AccountDeletedAdminEmailProps,
 ): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
 	const html = await renderAccountDeletedAdmin(props);
 	return send("account_deleted_admin", to, "Your ARSN account has been deleted by an administrator", html);
 }
@@ -153,6 +194,10 @@ export async function sendAccountDeletedAdminEmail(
 // ── Account lock ─────────────────────────────────────────────────────
 
 export async function sendAccountLockedEmail(to: string, props: AccountLockedEmailProps): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
 	const html = await renderAccountLocked(props);
 	return send("account_locked", to, "Your ARSN account has been locked", html);
 }
@@ -161,6 +206,10 @@ export async function sendAccountLockedAdminEmail(
 	to: string,
 	props: AccountLockedAdminEmailProps,
 ): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
 	const html = await renderAccountLockedAdmin(props);
 	return send("account_locked_admin", to, "Your ARSN account has been locked by an administrator", html);
 }
@@ -168,6 +217,10 @@ export async function sendAccountLockedAdminEmail(
 // ── Account suspended ────────────────────────────────────────────────
 
 export async function sendAccountSuspendedEmail(to: string, props: AccountSuspendedEmailProps): Promise<EmailResult> {
+	const emailResult = emailSchema.safeParse(to);
+	if (!emailResult.success) {
+		return validationError("to: " + emailResult.error.issues[0]!.message);
+	}
 	const html = await renderAccountSuspended(props);
 	return send("account_suspended", to, "Your ARSN account has been suspended", html);
 }
