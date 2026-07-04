@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { eq, asc, desc, or, count as drizzleCount } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword } from "@/lib/auth/utils";
 import type { ScimUser, ScimGroup, ScimName, ScimListResponse, ScimSearchParams, ScimMember } from "./types";
 
 export type {

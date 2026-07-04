@@ -53,6 +53,25 @@ export function isValidUsername(username: string): boolean {
 	return /^[a-zA-Z0-9._-]{3,64}$/.test(username);
 }
 
+export function isValidPassword(password: string): boolean {
+	if (password.length < 8) {
+		return false;
+	}
+	if (!/[A-Z]/.test(password)) {
+		return false;
+	}
+	if (!/[a-z]/.test(password)) {
+		return false;
+	}
+	if (!/[0-9]/.test(password)) {
+		return false;
+	}
+	if (!/[^A-Za-z0-9]/.test(password)) {
+		return false;
+	}
+	return true;
+}
+
 export function hashSecret(secret: string): string {
 	return createHash("sha256").update(secret).digest("hex");
 }

@@ -5,8 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { usernameToEmail, hashPassword, isValidUsername, isValidPassword } from "@/lib/auth";
-import { sessionKey } from "@/lib/auth/utils";
+import { usernameToEmail, hashPassword, isValidUsername, isValidPassword, sessionKey } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "../auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {

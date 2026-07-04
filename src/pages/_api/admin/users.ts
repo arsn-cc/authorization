@@ -4,7 +4,7 @@ import { createUserSchema } from "@/lib/schemas/admin";
 import { count, eq, ilike, or, asc, desc, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { usernameToEmail, hashPassword, isValidUsername } from "@/lib/auth";
+import { usernameToEmail, hashPassword, isValidUsername } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "./auth";
 
 export async function GET(req: Request): Promise<Response> {

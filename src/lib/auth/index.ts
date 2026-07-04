@@ -35,6 +35,7 @@ import {
 	sessionTtlSeconds,
 	usernameToEmail,
 	isValidUsername,
+	isValidPassword,
 } from "./utils";
 import { verifyTotpCode, consumeBackupCode } from "./totp";
 import {
@@ -51,8 +52,6 @@ import { getSetting } from "@/lib/settings";
 import { isPreview } from "@/lib/email/preview";
 import { renderWelcome, renderLoginNotification, renderPasswordReset, renderTwoFactor } from "@/lib/email";
 import { sendEmail } from "@/lib/email/send";
-
-export { usernameToEmail, isValidUsername, hashPassword, verifyPassword, generateToken } from "./utils";
 
 export type {
 	RegisterInput,
@@ -80,25 +79,6 @@ function err(e: AuthError, code: string): AuthResult<never> {
 
 function isValidEmail(email: string): boolean {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-export function isValidPassword(password: string): boolean {
-	if (password.length < 8) {
-		return false;
-	}
-	if (!/[A-Z]/.test(password)) {
-		return false;
-	}
-	if (!/[a-z]/.test(password)) {
-		return false;
-	}
-	if (!/[0-9]/.test(password)) {
-		return false;
-	}
-	if (!/[^A-Za-z0-9]/.test(password)) {
-		return false;
-	}
-	return true;
 }
 
 function passwordResetUrl(token: string): string {
