@@ -81,8 +81,6 @@ export interface UserResult {
 	preferredLanguage: string | null;
 	locale: string | null;
 	timezone: string | null;
-	loginShell: string | null;
-	gecos: string | null;
 	roleId: number | null;
 	totpEnabled: boolean;
 	emailTwoFactorEnabled: boolean;

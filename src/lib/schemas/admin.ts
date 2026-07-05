@@ -44,8 +44,6 @@ export const updateUserSchema = z.object({
 	preferredLanguage: z.string().nullable().optional(),
 	locale: z.string().nullable().optional(),
 	timezone: z.string().nullable().optional(),
-	loginShell: z.string().nullable().optional(),
-	gecos: z.string().nullable().optional(),
 	roleId: z.number().nullable().optional(),
 	username: z.string().optional(),
 	password: z.string().optional(),

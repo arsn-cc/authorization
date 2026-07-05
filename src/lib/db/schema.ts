@@ -53,9 +53,6 @@ const user = pgTable("user", {
 	preferredLanguage: text("preferred_language"),
 	locale: text("locale"),
 
-	loginShell: text("login_shell").default("/bin/bash"),
-	gecos: text("gecos"),
-
 	roleId: integer("role_id").references(() => role.id),
 
 	timezone: text("timezone"),

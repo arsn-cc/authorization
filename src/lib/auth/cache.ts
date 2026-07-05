@@ -45,8 +45,6 @@ export function toUserResult(u: typeof schema.user.$inferSelect): UserResult {
 		preferredLanguage: u.preferredLanguage,
 		locale: u.locale,
 		timezone: u.timezone,
-		loginShell: u.loginShell,
-		gecos: u.gecos,
 		roleId: u.roleId,
 		totpEnabled: Boolean(u.totpEnabled),
 		emailTwoFactorEnabled: Boolean(u.emailTwoFactorEnabled),

@@ -43,8 +43,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 			preferredLanguage: schema.user.preferredLanguage,
 			locale: schema.user.locale,
 			timezone: schema.user.timezone,
-			loginShell: schema.user.loginShell,
-			gecos: schema.user.gecos,
 			roleId: schema.user.roleId,
 			createdAt: schema.user.createdAt,
 			updatedAt: schema.user.updatedAt,
@@ -107,8 +105,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		"preferredLanguage",
 		"locale",
 		"timezone",
-		"loginShell",
-		"gecos",
 	] as const;
 
 	for (const field of stringFields) {

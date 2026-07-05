@@ -33,8 +33,6 @@ export const profileUpdateSchema = z.object({
 	preferredLanguage: z.string().nullable().optional(),
 	locale: z.string().nullable().optional(),
 	timezone: z.string().nullable().optional(),
-	loginShell: z.string().nullable().optional(),
-	gecos: z.string().nullable().optional(),
 	username: z.string().min(3).max(64).optional(),
 });
 
