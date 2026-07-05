@@ -41,6 +41,7 @@ const user = pgTable("user", {
 	displayName: text("display_name"),
 	nickname: text("nickname"),
 	image: text("image"),
+	banner: text("banner"),
 
 	phoneNumber: text("phone_number"),
 	phoneNumberVerified: timestamp("phone_number_verified"),
