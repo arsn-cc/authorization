@@ -735,42 +735,6 @@ export async function verifyEmail(token: string): Promise<AuthResult<true>> {
 	return ok(true as const);
 }
 
-// ── Email revert ────────────────────────────────────────────────────
-
-export async function revertEmail(token: string): Promise<AuthResult<true>> {
-	const tokenResult = tokenSchema.safeParse(token);
-	if (!tokenResult.success) {
-		return err(new AuthError(tokenResult.error.issues[0]!.message), "VALIDATION_ERROR");
-	}
-
-	const db = await getDb();
-	const tokenHash = hashSecret(token);
-	const [row] = await db
-		.select()
-		.from(schema.emailChangeToken)
-		.where(and(eq(schema.emailChangeToken.tokenHash, tokenHash), isNull(schema.emailChangeToken.usedAt)))
-		.limit(1);
-
-	if (!row || row.expires <= new Date()) {
-		return err(new AuthError("Invalid or expired revert token"), "INVALID_TOKEN");
-	}
-
-	await db.transaction(async (tx) => {
-		await tx.update(schema.emailChangeToken).set({ usedAt: new Date() }).where(eq(schema.emailChangeToken.id, row.id));
-		await tx
-			.update(schema.user)
-			.set({ email: row.previousEmail, updatedAt: new Date() })
-			.where(eq(schema.user.id, row.userId));
-	});
-
-	const user = await getUserById(row.userId);
-	if (user) {
-		await invalidateUser({ id: user.id, username: user.username, email: user.email });
-	}
-
-	return ok(true as const);
-}
-
 // ── Account unlock ──────────────────────────────────────────────────
 
 export async function unlockAccount(token: string): Promise<AuthResult<true>> {

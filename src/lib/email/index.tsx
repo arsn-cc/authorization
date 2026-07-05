@@ -2,7 +2,6 @@ import { render } from "react-email";
 import WelcomeEmail, { type WelcomeEmailProps } from "./templates/welcome";
 import PasswordResetEmail, { type PasswordResetEmailProps } from "./templates/password-reset";
 import PasswordChangedEmail, { type PasswordChangedEmailProps } from "./templates/password-changed";
-import EmailChangedEmail, { type EmailChangedEmailProps } from "./templates/email-changed";
 import LoginNotificationEmail, { type LoginNotificationEmailProps } from "./templates/login-notification";
 import AccountLockedEmail, { type AccountLockedEmailProps } from "./templates/account-locked";
 import TwoFactorEmail, { type TwoFactorEmailProps } from "./templates/two-factor";
@@ -19,7 +18,6 @@ export type {
 	WelcomeEmailProps,
 	PasswordResetEmailProps,
 	PasswordChangedEmailProps,
-	EmailChangedEmailProps,
 	LoginNotificationEmailProps,
 	AccountLockedEmailProps,
 	TwoFactorEmailProps,
@@ -41,10 +39,6 @@ export async function renderPasswordReset(props: PasswordResetEmailProps) {
 
 export async function renderPasswordChanged(props: PasswordChangedEmailProps) {
 	return render(<PasswordChangedEmail {...props} />);
-}
-
-export async function renderEmailChanged(props: EmailChangedEmailProps) {
-	return render(<EmailChangedEmail {...props} />);
 }
 
 export async function renderLoginNotification(props: LoginNotificationEmailProps) {

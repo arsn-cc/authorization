@@ -9,7 +9,6 @@ import { usernameToEmail, hashPassword, isValidUsername, isValidPassword, sessio
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 import {
 	sendPasswordChangedEmail,
-	sendEmailChangedEmail,
 	sendAccountLockedAdminEmail,
 	sendAccountSuspendedEmail,
 	sendAccountDeletedAdminEmail,
@@ -76,8 +75,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 	const updates: Record<string, unknown> = {};
 	let passwordChanged = false;
-	let emailChanged = false;
-	let oldEmail = current.email;
 
 	const stringFields = ["name", "displayName", "image", "timezone"] as const;
 
@@ -101,7 +98,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 		if (!existing) {
 			updates.username = parsed.username;
 			updates.email = email;
-			emailChanged = true;
 		}
 	}
 
@@ -135,17 +131,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 	if (passwordChanged) {
 		await sendPasswordChangedEmail(updated.email, { username: displayName });
-	}
-
-	if (emailChanged) {
-		await sendEmailChangedEmail(
-			oldEmail,
-			{
-				username: displayName,
-				newEmail: updated.email,
-			},
-			userId,
-		);
 	}
 
 	if (parsed.lockedUntil !== undefined) {

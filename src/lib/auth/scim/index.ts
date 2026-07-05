@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { eq, asc, desc, or, count as drizzleCount } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { hashPassword } from "@/lib/auth/utils";
+import { hashPassword, usernameToEmail } from "@/lib/auth/utils";
 import type { ScimUser, ScimGroup, ScimName, ScimListResponse, ScimSearchParams, ScimMember } from "./types";
 
 export type {
@@ -164,13 +164,13 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 		throw new Error("userName or email is required");
 	}
 
-	const email = userName.includes("@") ? userName : `${userName}@arsn.cc`;
+	const cleanUsername = userName.includes("@") ? userName.split("@")[0]! : userName;
 
 	const [inserted] = await db
 		.insert(schema.user)
 		.values({
-			username: userName.includes("@") ? userName.split("@")[0]! : userName,
-			email,
+			username: cleanUsername,
+			email: usernameToEmail(cleanUsername),
 			passwordHash: hashPassword(randomBytes(32).toString("hex")),
 			name: input.name?.formatted ?? null,
 			displayName: input.displayName ?? null,
@@ -192,8 +192,9 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 
 	const values: Record<string, unknown> = { updatedAt: new Date() };
 	if (input.userName) {
-		values.username = input.userName;
-		values.email = input.userName.includes("@") ? input.userName : `${input.userName}@arsn.cc`;
+		const cleanUsername = input.userName.includes("@") ? input.userName.split("@")[0]! : input.userName;
+		values.username = cleanUsername;
+		values.email = usernameToEmail(cleanUsername);
 	}
 	if (input.name) {
 		if (input.name.formatted !== undefined) {

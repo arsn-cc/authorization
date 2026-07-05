@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
 	renderPasswordChanged,
-	renderEmailChanged,
 	renderVerifyEmail,
 	renderAccountDeletionConfirm,
 	renderAccountDeleted,
@@ -12,7 +11,6 @@ import {
 } from "@/lib/email";
 import type {
 	PasswordChangedEmailProps,
-	EmailChangedEmailProps,
 	AccountDeletedEmailProps,
 	AccountDeletedAdminEmailProps,
 	AccountLockedEmailProps,
@@ -31,7 +29,6 @@ const userIdSchema = z.number().int().positive("userId must be a positive intege
 
 const VERIFY_EMAIL_TTL_MINUTES = 60;
 const ACCOUNT_DELETION_TTL_MINUTES = 60;
-const EMAIL_CHANGE_TTL_MINUTES = 60;
 const ACCOUNT_UNLOCK_TTL_MINUTES = 60;
 
 type EmailResult = { success: true } | { success: false; error: string };
@@ -62,44 +59,6 @@ export async function sendPasswordChangedEmail(to: string, props: PasswordChange
 	}
 	const html = await renderPasswordChanged(props);
 	return send("password_changed", to, "Your password has been changed", html);
-}
-
-// ── Email changed ────────────────────────────────────────────────────
-
-export async function sendEmailChangedEmail(
-	to: string,
-	props: EmailChangedEmailProps,
-	userId?: number,
-): Promise<EmailResult> {
-	const emailResult = emailSchema.safeParse(to);
-	if (!emailResult.success) {
-		return validationError("to: " + emailResult.error.issues[0]!.message);
-	}
-
-	let revertToken: string | undefined;
-
-	if (userId !== undefined) {
-		const idResult = userIdSchema.safeParse(userId);
-		if (!idResult.success) {
-			return validationError("userId: " + idResult.error.issues[0]!.message);
-		}
-		revertToken = generateToken();
-		const tokenHash = hashSecret(revertToken);
-		const db = await getDb();
-		await db.insert(schema.emailChangeToken).values({
-			userId,
-			tokenHash,
-			previousEmail: to,
-			expires: inMinutes(EMAIL_CHANGE_TTL_MINUTES),
-		});
-	}
-
-	const html = await renderEmailChanged({
-		...(props.username ? { username: props.username } : {}),
-		...(props.newEmail ? { newEmail: props.newEmail } : {}),
-		...(revertToken ? { revertToken } : {}),
-	});
-	return send("email_changed", to, "Your email address has been changed", html);
 }
 
 // ── Email verification ───────────────────────────────────────────────

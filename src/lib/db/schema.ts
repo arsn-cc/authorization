@@ -131,18 +131,6 @@ const accountDeletionToken = pgTable("account_deletion_token", {
 
 // ── Email change token ───────────────────────────────────────────────
 // Created when a user or admin changes the account email; used to revert.
-const emailChangeToken = pgTable("email_change_token", {
-	id: serial("id").primaryKey(),
-	userId: integer("user_id")
-		.notNull()
-		.references(() => user.id),
-	tokenHash: text("token_hash").notNull().unique(),
-	previousEmail: text("previous_email").notNull(),
-	expires: timestamp("expires").notNull(),
-	usedAt: timestamp("used_at"),
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
 // ── Account unlock token ─────────────────────────────────────────────
 // Created when an account is auto-locked (5 failed logins); used to
 // self-serve unlock without waiting for the lockout to expire.
@@ -354,7 +342,7 @@ export const schema = {
 	emailTwoFactorToken,
 	emailVerificationToken,
 	accountDeletionToken,
-	emailChangeToken,
+
 	accountUnlockToken,
 	oauthAuthorizationCode,
 	oauthAccessToken,
