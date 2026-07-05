@@ -183,8 +183,7 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 		throw new Error("userName or email is required");
 	}
 
-	const domain = process.env.EMAIL_DOMAIN || "example.com";
-	const email = userName.includes("@") ? userName : `${userName}@${domain}`;
+	const email = userName.includes("@") ? userName : `${userName}@arsn.cc`;
 
 	const [inserted] = await db
 		.insert(schema.user)
@@ -220,8 +219,7 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 	const values: Record<string, unknown> = { updatedAt: new Date() };
 	if (input.userName) {
 		values.username = input.userName;
-		const domain = process.env.EMAIL_DOMAIN || "example.com";
-		values.email = input.userName.includes("@") ? input.userName : `${input.userName}@${domain}`;
+		values.email = input.userName.includes("@") ? input.userName : `${input.userName}@arsn.cc`;
 	}
 	if (input.name) {
 		if (input.name.formatted !== undefined) {

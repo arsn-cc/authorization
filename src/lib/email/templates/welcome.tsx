@@ -11,7 +11,9 @@ export interface WelcomeEmailProps {
 export default function WelcomeEmail({ username = isPreview ? preview.username : undefined }: WelcomeEmailProps) {
 	return (
 		<Layout preview="Your account has been created">
-			<HeadingBlock>Welcome</HeadingBlock>
+			<HeadingBlock>
+				Welcome to <strong>arsn.cc</strong>
+			</HeadingBlock>
 			<Section className="mt-6">
 				<Text className="text-foreground mt-4 mb-0 text-sm leading-relaxed">
 					Thank you for creating an account, {username ? <span className="text-primary">{username}</span> : "User"}.

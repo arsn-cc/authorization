@@ -6,7 +6,7 @@ export function SignOff() {
 			<Text className="text-foreground m-0 text-right text-sm leading-relaxed">
 				Best regards,
 				<br />
-				the team
+				the <strong className="text-primary">arsn</strong> team
 			</Text>
 		</Section>
 	);

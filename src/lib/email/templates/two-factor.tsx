@@ -5,7 +5,7 @@ import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
-const base = () => process.env.APP_URL ?? "http://localhost:3000";
+const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
 const verifyUrl = (pendingToken: string, code: string) =>
 	`${base()}/login/e-2fa?p=${encodeURIComponent(pendingToken)}&c=${encodeURIComponent(code)}`;
 
