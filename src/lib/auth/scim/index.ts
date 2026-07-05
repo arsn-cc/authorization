@@ -33,6 +33,7 @@ function userToScim(u: {
 	displayName: string | null;
 	nickname: string | null;
 	phoneNumber: string | null;
+	image: string | null;
 	profileUrl: string | null;
 	externalId: string | null;
 	preferredLanguage: string | null;
@@ -60,7 +61,7 @@ function userToScim(u: {
 		...(u.nickname ? { nickname: u.nickname } : {}),
 		emails: [{ value: u.email, primary: true }],
 		...(u.phoneNumber ? { phoneNumbers: [{ value: u.phoneNumber }] } : {}),
-		...(u.profileUrl ? { photos: [{ value: u.profileUrl }] } : {}),
+		...(u.image ? { photos: [{ value: u.image }] } : {}),
 		...(u.externalId ? { externalId: u.externalId } : {}),
 		...(u.preferredLanguage ? { preferredLanguage: u.preferredLanguage } : {}),
 		...(u.locale ? { locale: u.locale } : {}),
@@ -196,7 +197,7 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 			displayName: input.displayName ?? null,
 			nickname: input.nickname ?? null,
 			phoneNumber: input.phoneNumbers?.[0]?.value ?? null,
-			profileUrl: input.photos?.[0]?.value ?? null,
+			image: input.photos?.[0]?.value ?? null,
 			externalId: input.externalId ?? null,
 			preferredLanguage: input.preferredLanguage ?? null,
 			locale: input.locale ?? null,
@@ -241,7 +242,7 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 		values.phoneNumber = input.phoneNumbers[0]?.value ?? null;
 	}
 	if (input.photos !== undefined) {
-		values.profileUrl = input.photos[0]?.value ?? null;
+		values.image = input.photos[0]?.value ?? null;
 	}
 	if (input.externalId !== undefined) {
 		values.externalId = input.externalId;
