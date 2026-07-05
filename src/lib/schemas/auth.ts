@@ -42,22 +42,3 @@ export const setSessionSchema = z.object({
 	token: z.string().min(1),
 	expires: z.string().min(1).optional(),
 });
-
-export const ldapBindSchema = z.object({
-	username: z.string().optional(),
-	password: z.string().min(1),
-	dn: z.string().optional(),
-});
-
-export const ldapSearchSchema = z.object({
-	base_dn: z.string().optional(),
-	filter: z.string().optional(),
-});
-
-export const radiusAuthSchema = z.object({
-	username: z.string().optional(),
-	password: z.string().optional(),
-	nasIdentifier: z.string().optional(),
-	nasIpAddress: z.string().optional(),
-	secret: z.string().optional(),
-});

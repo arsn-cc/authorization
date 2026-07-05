@@ -243,23 +243,6 @@ const oauthRefreshToken = pgTable("oauth_refresh_token", {
 	rotatedFromToken: text("rotated_from_token"),
 });
 
-// ── CAS service ticket ────────────────────────────────────────────
-// Single-use ticket for the Central Authentication Service protocol.
-const casTicket = pgTable("cas_ticket", {
-	id: serial("id").primaryKey(),
-	ticket: text("ticket").notNull().unique(),
-	tokenHash: text("token_hash"),
-	service: text("service").notNull(),
-	userId: integer("user_id")
-		.notNull()
-		.references(() => user.id),
-	username: text("username").notNull(),
-	type: text("type").notNull().default("service"),
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-	expiresAt: timestamp("expires_at").notNull(),
-	usedAt: timestamp("used_at"),
-});
-
 // ── Personal Access Token ───────────────────────────────────
 // Long-lived API tokens for machine-to-machine auth.
 // Used by the admin dashboard and other services that need
@@ -306,8 +289,7 @@ export type SessionDisplayKeys = (typeof sessionDisplayFields)[number]["key"];
 // Every registered app, service, identity source, or protocol
 // configuration lives in this one table, differentiated by `type`.
 //
-// Valid `type` values: oauth, oidc, saml, ldap, scim,
-//                       cas, radius
+// Valid `type` values: oauth, oidc, saml, scim
 const client = pgTable("client", {
 	// ── Common ──────────────────────────────────────────────────
 	id: serial("id").primaryKey(),
@@ -374,44 +356,12 @@ const client = pgTable("client", {
 	assertionSigned: integer("assertion_signed"),
 	authnSigned: integer("authn_signed"),
 
-	// ── LDAP (type = ldap) ─────────────────────────────────────
-	// This auth server acts as an LDAP directory server, exposing
-	// users and groups via the LDAP protocol for legacy integrations
-	// (e.g. VPN appliances, mail servers, NAS devices).
-	// Configure a single `ldap` client to define the directory shape.
-	ldapDomain: text("ldap_domain"),
-	ldapPort: integer("ldap_port"),
-	ldapsEnabled: integer("ldaps_enabled"),
-	ldapTlsCert: text("ldap_tls_cert"),
-	ldapTlsKey: text("ldap_tls_key"),
-	ldapAdminDn: text("ldap_admin_dn"),
-	ldapAdminPassword: text("ldap_admin_password"),
-	ldapUserObjectClass: text("ldap_user_object_class"),
-	ldapGroupObjectClass: text("ldap_group_object_class"),
-
 	// ── SCIM (type = scim) ─────────────────────────────────────
 	// System for Cross-domain Identity Management — used by
 	// enterprise IdPs to provision users/groups via REST API.
 	scimBaseUrl: text("scim_base_url"),
 	scimBearerToken: text("scim_bearer_token"),
 	scimSupportedAttributes: text("scim_supported_attributes"),
-
-	// ── CAS (type = cas) ───────────────────────────────────────
-	// Central Authentication Service — legacy SSO still used in
-	// universities and enterprise portals.
-	casLoginUrl: text("cas_login_url"),
-	casLogoutUrl: text("cas_logout_url"),
-	casServiceTicketTtl: integer("cas_service_ticket_ttl"),
-
-	// ── RADIUS (type = radius) ─────────────────────────────────
-	// Remote Authentication Dial-In User Service — network access
-	// authentication for VPN, WiFi, and NAS devices.
-	radiusSecret: text("radius_secret"),
-	radiusAuthProtocol: text("radius_auth_protocol"),
-	radiusServerIp: text("radius_server_ip"),
-	radiusAuthPort: integer("radius_auth_port"),
-	radiusAcctPort: integer("radius_acct_port"),
-	radiusNasIdentifier: text("radius_nas_identifier"),
 
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -430,7 +380,6 @@ export const schema = {
 	oauthAuthorizationCode,
 	oauthAccessToken,
 	oauthRefreshToken,
-	casTicket,
 	personalAccessToken,
 	setting,
 	client,
