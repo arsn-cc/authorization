@@ -56,7 +56,6 @@ export interface RequestEmailTwoFactorInput {
 export interface UserResult {
 	id: number;
 	username: string;
-	email: string;
 	name: string | null;
 	displayName: string | null;
 	emailVerified: Date | null;

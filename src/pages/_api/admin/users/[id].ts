@@ -1,7 +1,7 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { updateUserSchema } from "@/lib/schemas/admin";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
@@ -25,7 +25,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 		.select({
 			id: schema.user.id,
 			username: schema.user.username,
-			email: schema.user.email,
 			emailVerified: schema.user.emailVerified,
 			name: schema.user.name,
 			displayName: schema.user.displayName,
@@ -62,7 +61,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	const [current] = await db
 		.select({
 			username: schema.user.username,
-			email: schema.user.email,
 			name: schema.user.name,
 			lockedUntil: schema.user.lockedUntil,
 		})
@@ -89,15 +87,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	}
 
 	if (parsed.username && isValidUsername(parsed.username) && parsed.username !== current.username) {
-		const email = usernameToEmail(parsed.username);
-		const [existing] = await db
-			.select()
-			.from(schema.user)
-			.where(and(eq(schema.user.username, parsed.username), eq(schema.user.email, email)))
-			.limit(1);
+		const [existing] = await db.select().from(schema.user).where(eq(schema.user.username, parsed.username)).limit(1);
 		if (!existing) {
 			updates.username = parsed.username;
-			updates.email = email;
 		}
 	}
 
@@ -118,7 +110,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	const [updated] = await db.update(schema.user).set(updates).where(eq(schema.user.id, userId)).returning({
 		id: schema.user.id,
 		username: schema.user.username,
-		email: schema.user.email,
 		name: schema.user.name,
 		updatedAt: schema.user.updatedAt,
 	});
@@ -130,19 +121,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	const displayName = updated.name ?? updated.username;
 
 	if (passwordChanged) {
-		await sendPasswordChangedEmail(updated.email, { username: displayName });
+		await sendPasswordChangedEmail(usernameToEmail(updated.username), { username: displayName });
 	}
 
 	if (parsed.lockedUntil !== undefined) {
 		if (parsed.lockedUntil === null) {
 			// unlocked — no notification needed
 		} else if (parsed.suspensionReason) {
-			await sendAccountSuspendedEmail(updated.email, {
+			await sendAccountSuspendedEmail(usernameToEmail(updated.username), {
 				username: displayName,
 				reason: parsed.suspensionReason,
 			});
 		} else {
-			await sendAccountLockedAdminEmail(updated.email, {
+			await sendAccountLockedAdminEmail(usernameToEmail(updated.username), {
 				username: displayName,
 			});
 		}
@@ -166,7 +157,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 	const userId = Number(params.id);
 
 	const [user] = await db
-		.select({ username: schema.user.username, email: schema.user.email, name: schema.user.name })
+		.select({ username: schema.user.username, name: schema.user.name })
 		.from(schema.user)
 		.where(eq(schema.user.id, userId));
 
@@ -174,7 +165,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	await sendAccountDeletedAdminEmail(user.email, {
+	await sendAccountDeletedAdminEmail(usernameToEmail(user.username), {
 		username: user.name ?? user.username,
 	});
 

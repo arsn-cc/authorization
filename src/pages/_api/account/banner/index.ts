@@ -53,7 +53,7 @@ export async function POST(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+	await invalidateUser({ id: authed.userId, username: authed.user.username });
 
 	return withSecurityHeaders(Response.json({ banner: updated.banner }));
 }

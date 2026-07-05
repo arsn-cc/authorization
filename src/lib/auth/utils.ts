@@ -49,8 +49,19 @@ export function usernameToEmail(username: string): string {
 	return `${username}@${domain}`;
 }
 
+export function getEmail(user: { username: string }): string {
+	return usernameToEmail(user.username);
+}
+
 export function isValidUsername(username: string): boolean {
 	return /^[a-zA-Z0-9._-]{3,64}$/.test(username);
+}
+
+export function resolveToUsername(login: string): string {
+	if (login.includes("@")) {
+		return login.split("@")[0]!;
+	}
+	return login;
 }
 
 export function isValidPassword(password: string): boolean {

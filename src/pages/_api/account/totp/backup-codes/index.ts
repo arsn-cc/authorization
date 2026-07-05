@@ -48,7 +48,7 @@ export async function POST(req: Request): Promise<Response> {
 		.set({ totpBackupCodes: hashedBackupCodes, updatedAt: new Date() })
 		.where(eq(schema.user.id, authed.userId));
 
-	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+	await invalidateUser({ id: authed.userId, username: authed.user.username });
 
 	return withSecurityHeaders(Response.json({ codes: backupCodes }));
 }

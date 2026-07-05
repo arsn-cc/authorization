@@ -90,7 +90,6 @@ async function createUser() {
 
 	await db.insert(schema.user).values({
 		username,
-		email,
 		name,
 		passwordHash: hashPassword(password),
 		roleId: adminRole[0]?.id ?? null,

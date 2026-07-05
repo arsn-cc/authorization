@@ -3,7 +3,7 @@ import { and, eq, not } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { verifyPassword, hashPassword, isValidPassword, sessionKey } from "@/lib/auth/utils";
+import { verifyPassword, hashPassword, isValidPassword, sessionKey, usernameToEmail } from "@/lib/auth/utils";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
@@ -64,9 +64,9 @@ export async function POST(req: Request): Promise<Response> {
 		...sessions.filter((s) => s.token !== currentToken).map((s) => cache.delete(sessionKey(s.token))),
 	]);
 
-	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+	await invalidateUser({ id: authed.userId, username: authed.user.username });
 
-	await sendPasswordChangedEmail(authed.user.email, {
+	await sendPasswordChangedEmail(usernameToEmail(authed.user.username), {
 		username: authed.user.name ?? authed.user.username,
 	});
 

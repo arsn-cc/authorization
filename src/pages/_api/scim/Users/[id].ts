@@ -7,6 +7,7 @@ import { sendAccountDeletedAdminEmail } from "@/lib/auth/email";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { usernameToEmail } from "@/lib/auth/utils";
 
 const scimBodySchema = z.object({}).passthrough();
 
@@ -73,12 +74,12 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 	const userId = Number(params.id);
 
 	const [user] = await db
-		.select({ username: schema.user.username, email: schema.user.email, name: schema.user.name })
+		.select({ username: schema.user.username, name: schema.user.name })
 		.from(schema.user)
 		.where(eq(schema.user.id, userId));
 
 	if (user) {
-		await sendAccountDeletedAdminEmail(user.email, {
+		await sendAccountDeletedAdminEmail(usernameToEmail(user.username), {
 			username: user.name ?? user.username,
 		});
 	}

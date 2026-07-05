@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { hashSecret } from "@/lib/auth/utils";
+import { hashSecret, usernameToEmail } from "@/lib/auth/utils";
 import { getUserById } from "@/lib/auth/cache";
 import { EmailTwoFactorForm } from "@/components/email-two-factor-form";
 
@@ -61,7 +61,7 @@ async function EmailTwoFactorContent({ pendingAuthToken, code }: { pendingAuthTo
 		);
 	}
 
-	return <EmailTwoFactorForm pendingAuthToken={pendingAuthToken} email={user.email} code={code} />;
+	return <EmailTwoFactorForm pendingAuthToken={pendingAuthToken} email={usernameToEmail(user.username)} code={code} />;
 }
 
 export const getConfig = async () => {

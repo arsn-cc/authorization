@@ -15,7 +15,6 @@ export const CACHE_TTL_ROLE = 3600; // 1 hour
 
 export const userByIdKey = (id: number) => `user:id:${id}`;
 export const userByUsernameKey = (username: string) => `user:username:${username}`;
-export const userByEmailKey = (email: string) => `user:email:${email}`;
 export const clientKey = (clientId: string) => `client:${clientId}`;
 export const oauthAccessTokenKey = (token: string) => `oauth:access:${token}`;
 export const oauthRefreshTokenKey = (token: string) => `oauth:refresh:${token}`;
@@ -28,7 +27,6 @@ export function toUserResult(u: typeof schema.user.$inferSelect): UserResult {
 	return {
 		id: u.id,
 		username: u.username,
-		email: u.email,
 		name: u.name,
 		displayName: u.displayName,
 		emailVerified: u.emailVerified,
@@ -81,34 +79,10 @@ export async function getUserByUsername(username: string): Promise<UserResult | 
 	return result;
 }
 
-export async function getUserByEmail(email: string): Promise<UserResult | null> {
-	const cache = await getCache();
-	const key = userByEmailKey(email);
-	const cached = await cache.get<UserResult>(key);
-	if (cached) {
-		return cached;
-	}
-
-	const db = await getDb();
-	const [user] = await db.select().from(schema.user).where(eq(schema.user.email, email));
-	if (!user) {
-		return null;
-	}
-
-	const result = toUserResult(user);
-	await cache.set(key, result, CACHE_TTL_USER);
-	await cache.set(userByIdKey(user.id), result, CACHE_TTL_USER);
-	return result;
-}
-
 /** Drop all cached entries for a user (call after user update/delete). */
-export async function invalidateUser(user: { id: number; username: string; email: string }): Promise<void> {
+export async function invalidateUser(user: { id: number; username: string }): Promise<void> {
 	const cache = await getCache();
-	await Promise.all([
-		cache.delete(userByIdKey(user.id)),
-		cache.delete(userByUsernameKey(user.username)),
-		cache.delete(userByEmailKey(user.email)),
-	]);
+	await Promise.all([cache.delete(userByIdKey(user.id)), cache.delete(userByUsernameKey(user.username))]);
 }
 
 // ── Client helpers ─────────────────────────────────────────────────

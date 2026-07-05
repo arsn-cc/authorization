@@ -17,7 +17,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 	const db = await getDb();
 
 	const [user] = await db
-		.select({ id: schema.user.id, username: schema.user.username, email: schema.user.email })
+		.select({ id: schema.user.id, username: schema.user.username })
 		.from(schema.user)
 		.where(eq(schema.user.id, userId));
 
@@ -44,7 +44,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 		...sessions.map((s) => cache.delete(sessionKey(s.token))),
 	]);
 
-	await invalidateUser({ id: user.id, username: user.username, email: user.email });
+	await invalidateUser({ id: user.id, username: user.username });
 
 	return withSecurityHeaders(Response.json({ success: true }));
 }

@@ -10,6 +10,7 @@ import {
 	encodeSamlResponse,
 } from "@/lib/auth/saml";
 import { getSession } from "@/lib/auth";
+import { usernameToEmail } from "@/lib/auth/utils";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 
 export async function GET(req: Request): Promise<Response> {
@@ -95,11 +96,11 @@ async function handleSso(req: Request): Promise<Response> {
 		config,
 		{
 			id: user.id,
-			email: user.email,
+			email: usernameToEmail(user.username),
 			...(user.name ? { name: user.name } : {}),
 			...(user.displayName ? { displayName: user.displayName } : {}),
 		},
-		user.email,
+		usernameToEmail(user.username),
 		validationResult.requestId,
 	);
 

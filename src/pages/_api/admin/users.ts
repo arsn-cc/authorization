@@ -4,7 +4,7 @@ import { createUserSchema } from "@/lib/schemas/admin";
 import { count, eq, ilike, or, asc, desc, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { usernameToEmail, hashPassword, isValidUsername } from "@/lib/auth/utils";
+import { hashPassword, isValidUsername } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function GET(req: Request): Promise<Response> {
@@ -22,31 +22,24 @@ export async function GET(req: Request): Promise<Response> {
 	const order = url.searchParams.get("order") ?? "desc";
 
 	const searchCond = search
-		? or(
-				ilike(schema.user.username, `%${search}%`),
-				ilike(schema.user.email, `%${search}%`),
-				ilike(schema.user.name ?? sql`''`, `%${search}%`),
-			)
+		? or(ilike(schema.user.username, `%${search}%`), ilike(schema.user.name ?? sql`''`, `%${search}%`))
 		: undefined;
 
 	const [totalResult] = await db.select({ value: count() }).from(schema.user).where(searchCond);
 	const total = totalResult?.value ?? 0;
 
 	const orderColumn =
-		sort === "email"
-			? schema.user.email
-			: sort === "username"
-				? schema.user.username
-				: sort === "createdAt"
-					? schema.user.createdAt
-					: schema.user.id;
+		sort === "email" || sort === "username"
+			? schema.user.username
+			: sort === "createdAt"
+				? schema.user.createdAt
+				: schema.user.id;
 	const orderDir = order === "asc" ? asc : desc;
 
 	const users = await db
 		.select({
 			id: schema.user.id,
 			username: schema.user.username,
-			email: schema.user.email,
 			name: schema.user.name,
 			emailVerified: schema.user.emailVerified,
 			roleId: schema.user.roleId,
@@ -83,14 +76,9 @@ export async function POST(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "password_too_short" }, { status: 400 }));
 	}
 
-	const email = usernameToEmail(username);
 	const db = await getDb();
 
-	const [existing] = await db
-		.select()
-		.from(schema.user)
-		.where(or(eq(schema.user.username, username), eq(schema.user.email, email)))
-		.limit(1);
+	const [existing] = await db.select().from(schema.user).where(eq(schema.user.username, username)).limit(1);
 	if (existing) {
 		return withSecurityHeaders(Response.json({ error: "user_exists" }, { status: 409 }));
 	}
@@ -99,7 +87,6 @@ export async function POST(req: Request): Promise<Response> {
 		.insert(schema.user)
 		.values({
 			username,
-			email,
 			passwordHash: hashPassword(password),
 			name: name ?? null,
 			emailVerified: new Date(),
@@ -107,7 +94,6 @@ export async function POST(req: Request): Promise<Response> {
 		.returning({
 			id: schema.user.id,
 			username: schema.user.username,
-			email: schema.user.email,
 			name: schema.user.name,
 			emailVerified: schema.user.emailVerified,
 			createdAt: schema.user.createdAt,

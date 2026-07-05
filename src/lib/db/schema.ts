@@ -25,13 +25,11 @@ const role = pgTable("role", {
 });
 
 // ── User ──────────────────────────────────────────────────────────
-// End-user account. `username` is the login name; `email` is
-// auto-derived as `username@<domain>`. Passwords hashed with scrypt.
-// `emailVerified` is set when the user confirms identity.
+// End-user account. `username` is the login name; identity is
+// verified via `emailVerified`. Passwords hashed with scrypt.
 const user = pgTable("user", {
 	id: serial("id").primaryKey(),
 	username: text("username").notNull().unique(),
-	email: text("email").notNull().unique(),
 	emailVerified: timestamp("email_verified"),
 	passwordHash: text("password_hash"),
 	name: text("name"),

@@ -1,6 +1,7 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { requestAccountDeletion } from "@/lib/auth";
+import { usernameToEmail } from "@/lib/auth/utils";
 
 export async function POST(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -10,7 +11,7 @@ export async function POST(req: Request): Promise<Response> {
 
 	const result = await requestAccountDeletion(
 		authed.userId,
-		authed.user.email,
+		usernameToEmail(authed.user.username),
 		authed.user.name ?? authed.user.username,
 	);
 

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { eq, asc, desc, or, count as drizzleCount } from "drizzle-orm";
+import { eq, asc, desc, count as drizzleCount } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { hashPassword, usernameToEmail } from "@/lib/auth/utils";
@@ -26,7 +26,6 @@ const LIST_RESPONSE_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:ListResponse
 function userToScim(u: {
 	id: number;
 	username: string;
-	email: string;
 	name: string | null;
 	displayName: string | null;
 	image: string | null;
@@ -44,7 +43,7 @@ function userToScim(u: {
 		userName: u.username,
 		...(Object.keys(name).length > 0 ? { name } : {}),
 		...(u.displayName ? { displayName: u.displayName } : {}),
-		emails: [{ value: u.email, primary: true }],
+		emails: [{ value: usernameToEmail(u.username), primary: true }],
 		...(u.image ? { photos: [{ value: u.image }] } : {}),
 		...(u.timezone ? { timezone: u.timezone } : {}),
 		active: true,
@@ -97,9 +96,9 @@ export async function listUsers(params: ScimSearchParams): Promise<ScimListRespo
 
 	let whereCondition: unknown;
 	if (params.filter) {
-		const filterMatch = params.filter.match(/^(?:userName|email)\s+eq\s+"(.+)"$/);
+		const filterMatch = params.filter.match(/^userName\s+eq\s+"(.+)"$/);
 		if (filterMatch) {
-			whereCondition = or(eq(schema.user.username, filterMatch[1]!), eq(schema.user.email, filterMatch[1]!));
+			whereCondition = eq(schema.user.username, filterMatch[1]!);
 		}
 	}
 
@@ -170,7 +169,6 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 		.insert(schema.user)
 		.values({
 			username: cleanUsername,
-			email: usernameToEmail(cleanUsername),
 			passwordHash: hashPassword(randomBytes(32).toString("hex")),
 			name: input.name?.formatted ?? null,
 			displayName: input.displayName ?? null,
@@ -194,7 +192,6 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 	if (input.userName) {
 		const cleanUsername = input.userName.includes("@") ? input.userName.split("@")[0]! : input.userName;
 		values.username = cleanUsername;
-		values.email = usernameToEmail(cleanUsername);
 	}
 	if (input.name) {
 		if (input.name.formatted !== undefined) {

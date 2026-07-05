@@ -67,7 +67,7 @@ export async function POST(req: Request): Promise<Response> {
 		.set({ totpSecret: secret, totpEnabled: 0, updatedAt: new Date() })
 		.where(eq(schema.user.id, authed.userId));
 
-	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+	await invalidateUser({ id: authed.userId, username: authed.user.username });
 
 	return withSecurityHeaders(Response.json({ secret, uri }));
 }
@@ -105,7 +105,7 @@ export async function PUT(req: Request): Promise<Response> {
 		.set({ totpEnabled: 1, totpBackupCodes: hashedBackupCodes, updatedAt: new Date() })
 		.where(eq(schema.user.id, authed.userId));
 
-	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+	await invalidateUser({ id: authed.userId, username: authed.user.username });
 
 	return withSecurityHeaders(Response.json({ enabled: true, backupCodes }));
 }
@@ -122,7 +122,7 @@ export async function DELETE(req: Request): Promise<Response> {
 		.set({ totpSecret: null, totpEnabled: 0, totpBackupCodes: null, updatedAt: new Date() })
 		.where(eq(schema.user.id, authed.userId));
 
-	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+	await invalidateUser({ id: authed.userId, username: authed.user.username });
 
 	return withSecurityHeaders(Response.json({ enabled: false }));
 }

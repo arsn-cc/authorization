@@ -18,7 +18,6 @@ export async function GET(req: Request): Promise<Response> {
 		.select({
 			id: schema.user.id,
 			username: schema.user.username,
-			email: schema.user.email,
 			emailVerified: schema.user.emailVerified,
 			name: schema.user.name,
 			displayName: schema.user.displayName,
@@ -69,7 +68,6 @@ export async function PATCH(req: Request): Promise<Response> {
 	const [updated] = await db.update(schema.user).set(updates).where(eq(schema.user.id, authed.userId)).returning({
 		id: schema.user.id,
 		username: schema.user.username,
-		email: schema.user.email,
 		name: schema.user.name,
 		displayName: schema.user.displayName,
 		image: schema.user.image,
@@ -82,7 +80,7 @@ export async function PATCH(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	await invalidateUser({ id: authed.userId, username: authed.user.username, email: authed.user.email });
+	await invalidateUser({ id: authed.userId, username: authed.user.username });
 
 	return withSecurityHeaders(Response.json(updated));
 }

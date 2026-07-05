@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
-import { hashToken } from "@/lib/auth/utils";
+import { hashToken, usernameToEmail } from "@/lib/auth/utils";
 import { SignJWT, importPKCS8, importSPKI, exportJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
@@ -447,7 +447,7 @@ export async function generateIdToken(
 				}
 			}
 			if (scopes.includes("email")) {
-				payload.email = user.email;
+				payload.email = usernameToEmail(user.username);
 				payload.emailVerified = !!user.emailVerified;
 			}
 		}
@@ -657,7 +657,7 @@ export async function getUserInfo(accessTokenValue: string, client?: OAuthClient
 			}
 
 			if (scopes.includes("email")) {
-				result.email = user.email;
+				result.email = usernameToEmail(user.username);
 				result.emailVerified = !!user.emailVerified;
 			}
 		}
