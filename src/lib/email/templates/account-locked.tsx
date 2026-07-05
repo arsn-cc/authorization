@@ -6,7 +6,7 @@ import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
-const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
+const base = () => process.env.APP_URL ?? "http://localhost:3000";
 const unlockUrl = (token: string) => `${base()}/unlock-account?token=${encodeURIComponent(token)}`;
 
 export interface AccountLockedEmailProps {
@@ -36,7 +36,7 @@ export default function AccountLockedEmail({
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">
 					If you did not attempt to sign in, please reset your password immediately and contact{" "}
-					<Link href="mailto:security@arsn.cc">security@arsn.cc</Link>.
+					<Link href="mailto:security@example.com">security@example.com</Link>.
 				</Text>
 			</Section>
 			<SignOff />

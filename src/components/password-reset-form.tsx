@@ -26,7 +26,7 @@ export function PasswordResetForm({ token }: { token: string }) {
 	if (state?.success === true) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Password Reset - ARSN</title>
+				<title>Password Reset</title>
 				<h1 className="text-3xl font-semibold tracking-tight">Password reset</h1>
 				<p className="text-muted-foreground mt-4 text-sm">
 					Your password has been updated. You can now log in with your new password.
@@ -40,7 +40,7 @@ export function PasswordResetForm({ token }: { token: string }) {
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8">
-			<title>Reset password - ARSN</title>
+			<title>Reset password</title>
 			<h1 className="text-center text-3xl font-semibold tracking-tight">Reset password</h1>
 
 			<form action={formAction} className="mt-6 space-y-4">

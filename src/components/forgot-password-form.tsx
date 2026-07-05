@@ -19,7 +19,7 @@ export function ForgotPasswordForm() {
 	if (state?.success === true) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Check your email - ARSN</title>
+				<title>Check your email</title>
 				<h1 className="text-3xl font-semibold tracking-tight">Check your email</h1>
 				<p className="text-muted-foreground mt-4 text-sm">
 					If an account with that email exists, you'll receive a password reset link shortly.
@@ -33,7 +33,7 @@ export function ForgotPasswordForm() {
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8">
-			<title>Forgot password - ARSN</title>
+			<title>Forgot password</title>
 			<h1 className="text-center text-3xl font-semibold tracking-tight">Forgot password</h1>
 
 			<form action={formAction} className="mt-6 space-y-4">

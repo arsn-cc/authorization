@@ -45,7 +45,7 @@ export function generateToken(): string {
 }
 
 export function usernameToEmail(username: string): string {
-	const domain = process.env.EMAIL_DOMAIN || "arsn.cc";
+	const domain = process.env.EMAIL_DOMAIN || "example.com";
 	return `${username}@${domain}`;
 }
 

@@ -53,14 +53,14 @@ export function LoginForm({ registrationDisabled }: { registrationDisabled?: boo
 			}
 			if ("token" in data && data.token) {
 				void setSessionCookie(data.token, data.expires);
-				window.location.href = "https://arsn.cc";
+				window.location.href = "/";
 			}
 		}
 	}, [state]);
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8">
-			<title>Log in to ARSN</title>
+			<title>Log in</title>
 
 			<h1 className="text-center text-3xl font-semibold tracking-tight">Login</h1>
 

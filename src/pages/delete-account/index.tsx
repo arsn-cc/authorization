@@ -6,7 +6,7 @@ export default function DeleteAccountPage({ query }: { query?: Record<string, st
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-			<title>Delete account - ARSN</title>
+			<title>Delete account</title>
 			<DeleteAccountClient token={token} />
 		</div>
 	);

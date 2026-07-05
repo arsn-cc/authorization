@@ -61,7 +61,7 @@ export async function sendPasswordChangedEmail(to: string, props: PasswordChange
 		return validationError("to: " + emailResult.error.issues[0]!.message);
 	}
 	const html = await renderPasswordChanged(props);
-	return send("password_changed", to, "Your ARSN password has been changed", html);
+	return send("password_changed", to, "Your password has been changed", html);
 }
 
 // ── Email changed ────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ export async function sendEmailChangedEmail(
 		...(props.newEmail ? { newEmail: props.newEmail } : {}),
 		...(revertToken ? { revertToken } : {}),
 	});
-	return send("email_changed", to, "Your ARSN email address has been changed", html);
+	return send("email_changed", to, "Your email address has been changed", html);
 }
 
 // ── Email verification ───────────────────────────────────────────────
@@ -172,7 +172,7 @@ export async function sendAccountDeletedEmail(to: string, props: AccountDeletedE
 		return validationError("to: " + emailResult.error.issues[0]!.message);
 	}
 	const html = await renderAccountDeleted(props);
-	return send("account_deleted", to, "Your ARSN account has been deleted", html);
+	return send("account_deleted", to, "Your account has been deleted", html);
 }
 
 export async function sendAccountDeletedAdminEmail(
@@ -184,7 +184,7 @@ export async function sendAccountDeletedAdminEmail(
 		return validationError("to: " + emailResult.error.issues[0]!.message);
 	}
 	const html = await renderAccountDeletedAdmin(props);
-	return send("account_deleted_admin", to, "Your ARSN account has been deleted by an administrator", html);
+	return send("account_deleted_admin", to, "Your account has been deleted by an administrator", html);
 }
 
 // ── Account lock ─────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ export async function sendAccountLockedEmail(
 		...(props.username ? { username: props.username } : {}),
 		...(unlockToken ? { unlockToken } : {}),
 	});
-	return send("account_locked", to, "Your ARSN account has been locked", html);
+	return send("account_locked", to, "Your account has been locked", html);
 }
 
 export async function sendAccountLockedAdminEmail(
@@ -232,7 +232,7 @@ export async function sendAccountLockedAdminEmail(
 		return validationError("to: " + emailResult.error.issues[0]!.message);
 	}
 	const html = await renderAccountLockedAdmin(props);
-	return send("account_locked_admin", to, "Your ARSN account has been locked by an administrator", html);
+	return send("account_locked_admin", to, "Your account has been locked by an administrator", html);
 }
 
 // ── Account suspended ────────────────────────────────────────────────
@@ -243,5 +243,5 @@ export async function sendAccountSuspendedEmail(to: string, props: AccountSuspen
 		return validationError("to: " + emailResult.error.issues[0]!.message);
 	}
 	const html = await renderAccountSuspended(props);
-	return send("account_suspended", to, "Your ARSN account has been suspended", html);
+	return send("account_suspended", to, "Your account has been suspended", html);
 }

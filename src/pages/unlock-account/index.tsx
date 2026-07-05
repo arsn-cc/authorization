@@ -7,7 +7,7 @@ export default function UnlockAccountPage({ query }: { query?: Record<string, st
 	if (!token) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Unlock account - ARSN</title>
+				<title>Unlock account</title>
 				<h1 className="text-3xl font-semibold tracking-tight">Unlock account</h1>
 				<p className="text-muted-foreground mt-4 text-sm">
 					Check your inbox for the unlock link we sent when your account was locked.
@@ -18,7 +18,7 @@ export default function UnlockAccountPage({ query }: { query?: Record<string, st
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-			<title>Unlock account - ARSN</title>
+			<title>Unlock account</title>
 			<UnlockAccountClient token={token} />
 		</div>
 	);

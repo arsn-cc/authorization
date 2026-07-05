@@ -74,7 +74,7 @@ export default function LoginNotificationEmail({
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">
 					If this wasn't you, please reset your password immediately and contact{" "}
-					<Link href="mailto:security@arsn.cc">security@arsn.cc</Link>.
+					<Link href="mailto:security@example.com">security@example.com</Link>.
 				</Text>
 			</Section>
 

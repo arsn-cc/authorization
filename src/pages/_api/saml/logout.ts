@@ -14,7 +14,7 @@ function handleLogout(): Response {
 		new Response(null, {
 			status: 302,
 			headers: {
-				Location: "https://arsn.cc",
+				Location: "/",
 				"Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
 			},
 		}),

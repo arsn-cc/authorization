@@ -6,7 +6,7 @@ import { HeadingBlock } from "@/lib/email/components/heading";
 import { SignOff } from "@/lib/email/components/sign-off";
 import { isPreview, preview } from "@/lib/email/preview";
 
-const base = () => process.env.APP_URL ?? "https://auth.arsn.cc";
+const base = () => process.env.APP_URL ?? "http://localhost:3000";
 const confirmUrl = (token: string) => `${base()}/delete-account?token=${encodeURIComponent(token)}`;
 
 export interface AccountDeletionConfirmEmailProps {
@@ -38,7 +38,7 @@ export default function AccountDeletionConfirmEmail({
 			<Section className="mt-6">
 				<Text className="text-foreground m-0 text-sm leading-relaxed">
 					If you did not request account deletion, please contact{" "}
-					<Link href="mailto:security@arsn.cc">security@arsn.cc</Link> immediately.
+					<Link href="mailto:security@example.com">security@example.com</Link> immediately.
 				</Text>
 			</Section>
 			<SignOff />

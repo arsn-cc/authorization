@@ -100,7 +100,7 @@ async function sendPasswordResetEmail(to: string, username: string | null, token
 	});
 	const emailResult = await sendEmail({
 		to,
-		subject: "Reset your ARSN password",
+		subject: "Reset your password",
 		html,
 	});
 	if (!emailResult.success) {
@@ -120,7 +120,7 @@ async function sendTwoFactorEmail(to: string, username: string | null, pendingTo
 	});
 	const emailResult = await sendEmail({
 		to,
-		subject: "Verify your ARSN sign-in",
+		subject: "Verify your sign-in",
 		html,
 	});
 	if (!emailResult.success) {
@@ -190,7 +190,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 		const html = await renderWelcome(inserted.name ? { username: inserted.name } : {});
 		const welcomeResult = await sendEmail({
 			to: inserted.email,
-			subject: "Welcome to ARSN - Your account has been created",
+			subject: "Welcome - Your account has been created",
 			html,
 		});
 		if (!welcomeResult.success) {

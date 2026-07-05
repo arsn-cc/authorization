@@ -23,7 +23,7 @@ export function RegisterForm() {
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8">
-			<title>Create an ARSN account</title>
+			<title>Create an account</title>
 
 			<h1 className="text-center text-3xl font-semibold tracking-tight">Register</h1>
 

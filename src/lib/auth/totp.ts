@@ -12,7 +12,7 @@ export function generateTotpSecret(): string {
 	return generateSecret();
 }
 
-export function generateTotpUri(secret: string, username: string, issuer = "ARSN"): string {
+export function generateTotpUri(secret: string, username: string, issuer = "Auth"): string {
 	return generateURI({ issuer, label: username, secret });
 }
 

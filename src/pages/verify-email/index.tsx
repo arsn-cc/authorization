@@ -7,7 +7,7 @@ export default function VerifyEmailPage({ query }: { query?: Record<string, stri
 	if (!token) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Verify email - ARSN</title>
+				<title>Verify email</title>
 				<h1 className="text-3xl font-semibold tracking-tight">Verify your email</h1>
 				<p className="text-muted-foreground mt-4 text-sm">Check your inbox for the verification link we sent you.</p>
 			</div>
@@ -16,7 +16,7 @@ export default function VerifyEmailPage({ query }: { query?: Record<string, stri
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-			<title>Verify email - ARSN</title>
+			<title>Verify email</title>
 			<VerifyEmailClient token={token} />
 		</div>
 	);

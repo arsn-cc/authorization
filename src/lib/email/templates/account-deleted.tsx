@@ -22,7 +22,7 @@ export default function AccountDeletedEmail({
 				</Text>
 				<Text className="text-foreground mt-4 mb-0 text-sm leading-relaxed">
 					If you believe this was done in error, please contact{" "}
-					<Link href="mailto:security@arsn.cc">security@arsn.cc</Link>.
+					<Link href="mailto:security@example.com">security@example.com</Link>.
 				</Text>
 			</Section>
 			<SignOff />

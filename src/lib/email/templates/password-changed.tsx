@@ -22,7 +22,7 @@ export default function PasswordChangedEmail({
 				</Text>
 				<Text className="text-foreground mt-4 mb-0 text-sm leading-relaxed">
 					If you did not initiate this change, please contact{" "}
-					<Link href="mailto:security@arsn.cc">security@arsn.cc</Link> immediately and reset your credentials.
+					<Link href="mailto:security@example.com">security@example.com</Link> immediately and reset your credentials.
 				</Text>
 			</Section>
 			<SignOff />

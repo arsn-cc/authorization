@@ -37,7 +37,7 @@ export function EmailTwoFactorForm({
 	useEffect(() => {
 		if (verifyState?.success === true) {
 			void setSessionCookie(verifyState.data.token, verifyState.data.expires);
-			window.location.href = "https://arsn.cc";
+			window.location.href = "/";
 		}
 	}, [verifyState]);
 
@@ -62,7 +62,7 @@ export function EmailTwoFactorForm({
 			}).then(async (result) => {
 				if (result.success) {
 					await setSessionCookie(result.data.token, result.data.expires);
-					window.location.href = "https://arsn.cc";
+					window.location.href = "/";
 				}
 				return;
 			});
@@ -78,7 +78,7 @@ export function EmailTwoFactorForm({
 	if (!showForm) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Verifying sign-in - ARSN</title>
+				<title>Verifying sign-in</title>
 				<h1 className="text-3xl font-semibold tracking-tight">Verifying...</h1>
 				<p className="text-muted-foreground mt-4 text-sm">Please wait while we verify your sign-in.</p>
 			</div>
@@ -87,7 +87,7 @@ export function EmailTwoFactorForm({
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8">
-			<title>Two-factor authentication - ARSN</title>
+			<title>Two-factor authentication</title>
 			<h1 className="text-center text-3xl font-semibold tracking-tight">Check your email</h1>
 			<p className="text-muted-foreground mt-2 text-center text-sm">
 				We sent a verification link to <span className="text-foreground font-medium">{email}</span>.

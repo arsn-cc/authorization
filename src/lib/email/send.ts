@@ -12,8 +12,8 @@ export type SendEmailResult =
 
 const apiKey = process.env.USESEND_API_KEY ?? "";
 const baseUrl = process.env.USESEND_BASE_URL;
-const fromAddress = (process.env.USESEND_FROM_ADDRESS ?? "noreply@arsn.cc").replace(/[\r\n]/g, "").trim();
-const fromName = (process.env.USESEND_FROM_NAME ?? "ARSN").replace(/[\r\n]/g, "").trim();
+const fromAddress = (process.env.USESEND_FROM_ADDRESS ?? "noreply@example.com").replace(/[\r\n]/g, "").trim();
+const fromName = (process.env.USESEND_FROM_NAME ?? "Auth").replace(/[\r\n]/g, "").trim();
 
 let _client: UseSend | null = null;
 

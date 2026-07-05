@@ -23,7 +23,7 @@ async function EmailTwoFactorContent({ pendingAuthToken, code }: { pendingAuthTo
 	if (!pendingAuthToken) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Two-factor authentication - ARSN</title>
+				<title>Two-factor authentication</title>
 				<h1 className="text-3xl font-semibold tracking-tight">Invalid link</h1>
 				<p className="text-muted-foreground mt-4 text-sm">No pending authentication session found.</p>
 			</div>
@@ -41,7 +41,7 @@ async function EmailTwoFactorContent({ pendingAuthToken, code }: { pendingAuthTo
 	if (!pending) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Two-factor authentication - ARSN</title>
+				<title>Two-factor authentication</title>
 				<h1 className="text-3xl font-semibold tracking-tight">Session expired</h1>
 				<p className="text-muted-foreground mt-4 text-sm">
 					This authentication session has expired. Please log in again.
@@ -54,7 +54,7 @@ async function EmailTwoFactorContent({ pendingAuthToken, code }: { pendingAuthTo
 	if (!user) {
 		return (
 			<div className="mx-auto w-full max-w-md px-4 py-8 text-center">
-				<title>Two-factor authentication - ARSN</title>
+				<title>Two-factor authentication</title>
 				<h1 className="text-3xl font-semibold tracking-tight">User not found</h1>
 				<p className="text-muted-foreground mt-4 text-sm">This user no longer exists.</p>
 			</div>

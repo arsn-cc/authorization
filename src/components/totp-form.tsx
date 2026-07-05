@@ -31,13 +31,13 @@ export function TotpForm({ pendingAuthToken }: { pendingAuthToken: string }) {
 	useEffect(() => {
 		if (state?.success === true) {
 			void setSessionCookie(state.data.token, state.data.expires);
-			window.location.href = "https://arsn.cc";
+			window.location.href = "/";
 		}
 	}, [state]);
 
 	return (
 		<div className="mx-auto w-full max-w-md px-4 py-8">
-			<title>Two-factor authentication - ARSN</title>
+			<title>Two-factor authentication</title>
 			<h1 className="text-center text-3xl font-semibold tracking-tight">Two-factor auth</h1>
 			<p className="text-muted-foreground mt-2 text-center text-sm">Enter the code from your authenticator app.</p>
 
