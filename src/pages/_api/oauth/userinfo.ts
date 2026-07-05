@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { getUserInfo } from "@/lib/oauth";
+import { getUserInfo } from "@/lib/auth/oauth";
 
 function parseAuthHeader(req: Request): string | null {
 	const auth = req.headers.get("authorization");

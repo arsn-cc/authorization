@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { hashToken } from "@/lib/auth/utils";
-import { authenticateClient } from "@/lib/oauth";
+import { authenticateClient } from "@/lib/auth/oauth";
 import { deleteCachedOAuthAccessToken, deleteCachedOAuthRefreshToken } from "@/lib/auth/cache";
 
 function clientSecretFromBasicAuth(req: Request): string | undefined {

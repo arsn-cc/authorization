@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto";
 import { count, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { getClientById } from "@/lib/oauth";
+import { getClientById } from "@/lib/auth/oauth";
 
 export async function POST(req: Request): Promise<Response> {
 	const parsed = await parseFormSafe(req, deviceFormSchema);

@@ -8,7 +8,7 @@ import {
 	verifyAuthnRequestSignature,
 	generateSamlResponse,
 	encodeSamlResponse,
-} from "@/lib/saml";
+} from "@/lib/auth/saml";
 import { getSession } from "@/lib/auth";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 

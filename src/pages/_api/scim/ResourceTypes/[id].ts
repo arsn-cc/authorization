@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { getScimResourceType } from "@/lib/scim";
+import { getScimResourceType } from "@/lib/auth/scim";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }): Promise<Response> {
 	const resourceType = getScimResourceType(params.id);

@@ -1,7 +1,7 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { parseFormSafe } from "@/lib/http/validate";
 import { introspectFormSchema } from "@/lib/schemas/oauth";
-import { authenticateClient, getTokenIntrospection } from "@/lib/oauth";
+import { authenticateClient, getTokenIntrospection } from "@/lib/auth/oauth";
 
 function clientCredentialsFromBasicAuth(req: Request): { clientId: string; clientSecret: string } | null {
 	const auth = req.headers.get("authorization");

@@ -2,7 +2,7 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { parseQuery } from "@/lib/http/validate";
 import { authorizeQuerySchema } from "@/lib/schemas/oauth";
 import { eq } from "drizzle-orm";
-import { getClientById, generateAuthorizationCode, type AuthorizationRequest } from "@/lib/oauth";
+import { getClientById, generateAuthorizationCode, type AuthorizationRequest } from "@/lib/auth/oauth";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";

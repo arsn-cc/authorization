@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { listGroups, createGroup, type ScimSearchParams } from "@/lib/scim";
+import { listGroups, createGroup, type ScimSearchParams } from "@/lib/auth/scim";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
 import { z } from "zod";

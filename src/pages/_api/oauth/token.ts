@@ -6,7 +6,7 @@ import {
 	exchangeClientCredentials,
 	exchangeRefreshToken,
 	type TokenRequest,
-} from "@/lib/oauth";
+} from "@/lib/auth/oauth";
 
 function clientCredentials(req: Request): string | null {
 	const auth = req.headers.get("authorization");

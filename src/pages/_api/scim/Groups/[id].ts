@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { getGroup, deleteGroup } from "@/lib/scim";
+import { getGroup, deleteGroup } from "@/lib/auth/scim";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {

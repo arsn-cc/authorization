@@ -7,7 +7,7 @@ import {
 	type AuthorizationRequest,
 	authenticateClient,
 	validateRedirectUri,
-} from "@/lib/oauth";
+} from "@/lib/auth/oauth";
 import { getSession } from "@/lib/auth";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
 

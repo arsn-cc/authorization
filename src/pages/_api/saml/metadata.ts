@@ -2,7 +2,7 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
-import { generateSamlMetadata } from "@/lib/saml";
+import { generateSamlMetadata } from "@/lib/auth/saml";
 import { z } from "zod";
 
 const bindingSchema = z.enum([

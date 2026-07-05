@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { getDiscoveryDocument } from "@/lib/oauth";
+import { getDiscoveryDocument } from "@/lib/auth/oauth";
 
 export async function GET(req: Request): Promise<Response> {
 	const url = new URL(req.url);
