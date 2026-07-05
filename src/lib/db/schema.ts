@@ -34,37 +34,18 @@ const user = pgTable("user", {
 	email: text("email").notNull().unique(),
 	emailVerified: timestamp("email_verified"),
 	passwordHash: text("password_hash"),
-
 	name: text("name"),
-	givenName: text("given_name"),
-	familyName: text("family_name"),
 	displayName: text("display_name"),
-	nickname: text("nickname"),
 	image: text("image"),
 	banner: text("banner"),
-
-	phoneNumber: text("phone_number"),
-	phoneNumberVerified: timestamp("phone_number_verified"),
-	profileUrl: text("profile_url"),
-	websiteUrl: text("website_url"),
-	address: text("address"),
-
-	externalId: text("external_id"),
-	preferredLanguage: text("preferred_language"),
-	locale: text("locale"),
-
 	roleId: integer("role_id").references(() => role.id),
-
 	timezone: text("timezone"),
-
 	totpSecret: text("totp_secret"),
 	totpEnabled: integer("totp_enabled").notNull().default(0),
 	totpBackupCodes: text("totp_backup_codes"),
 	emailTwoFactorEnabled: integer("email_two_factor_enabled").notNull().default(0),
-
 	failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
 	lockedUntil: timestamp("locked_until"),
-
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

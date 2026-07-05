@@ -7,23 +7,13 @@ export interface ScimMeta {
 }
 
 export interface ScimName {
-	givenName?: string;
-	familyName?: string;
 	formatted?: string;
-	middleName?: string;
-	honorificPrefix?: string;
-	honorificSuffix?: string;
 }
 
 export interface ScimEmail {
 	value: string;
 	type?: string;
 	primary?: boolean;
-}
-
-export interface ScimPhoneNumber {
-	value: string;
-	type?: string;
 }
 
 export interface ScimPhoto {
@@ -36,13 +26,8 @@ export interface ScimUser {
 	userName: string;
 	name?: ScimName;
 	displayName?: string;
-	nickname?: string;
 	emails?: ScimEmail[];
-	phoneNumbers?: ScimPhoneNumber[];
 	photos?: ScimPhoto[];
-	externalId?: string;
-	preferredLanguage?: string;
-	locale?: string;
 	timezone?: string;
 	active?: boolean;
 	meta: ScimMeta;

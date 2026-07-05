@@ -167,15 +167,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 			email,
 			passwordHash: hashPassword(input.password),
 			name: input.name ?? null,
-			givenName: input.givenName ?? null,
-			familyName: input.familyName ?? null,
 			displayName: input.displayName ?? null,
-			nickname: input.nickname ?? null,
-			phoneNumber: input.phoneNumber ?? null,
-			profileUrl: input.profileUrl ?? null,
-			websiteUrl: input.websiteUrl ?? null,
-			preferredLanguage: input.preferredLanguage ?? null,
-			locale: input.locale ?? null,
 			timezone: input.timezone ?? null,
 		})
 		.returning();

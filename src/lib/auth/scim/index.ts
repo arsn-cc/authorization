@@ -28,16 +28,8 @@ function userToScim(u: {
 	username: string;
 	email: string;
 	name: string | null;
-	givenName: string | null;
-	familyName: string | null;
 	displayName: string | null;
-	nickname: string | null;
-	phoneNumber: string | null;
 	image: string | null;
-	profileUrl: string | null;
-	externalId: string | null;
-	preferredLanguage: string | null;
-	locale: string | null;
 	timezone: string | null;
 	emailVerified: Date | null;
 	createdAt: Date;
@@ -47,24 +39,13 @@ function userToScim(u: {
 	if (u.name) {
 		name.formatted = u.name;
 	}
-	if (u.givenName) {
-		name.givenName = u.givenName;
-	}
-	if (u.familyName) {
-		name.familyName = u.familyName;
-	}
 	return {
 		id: String(u.id),
 		userName: u.username,
 		...(Object.keys(name).length > 0 ? { name } : {}),
 		...(u.displayName ? { displayName: u.displayName } : {}),
-		...(u.nickname ? { nickname: u.nickname } : {}),
 		emails: [{ value: u.email, primary: true }],
-		...(u.phoneNumber ? { phoneNumbers: [{ value: u.phoneNumber }] } : {}),
 		...(u.image ? { photos: [{ value: u.image }] } : {}),
-		...(u.externalId ? { externalId: u.externalId } : {}),
-		...(u.preferredLanguage ? { preferredLanguage: u.preferredLanguage } : {}),
-		...(u.locale ? { locale: u.locale } : {}),
 		...(u.timezone ? { timezone: u.timezone } : {}),
 		active: true,
 		meta: {
@@ -192,15 +173,8 @@ export async function createUser(input: Partial<ScimUser>): Promise<ScimUser> {
 			email,
 			passwordHash: hashPassword(randomBytes(32).toString("hex")),
 			name: input.name?.formatted ?? null,
-			givenName: input.name?.givenName ?? null,
-			familyName: input.name?.familyName ?? null,
 			displayName: input.displayName ?? null,
-			nickname: input.nickname ?? null,
-			phoneNumber: input.phoneNumbers?.[0]?.value ?? null,
 			image: input.photos?.[0]?.value ?? null,
-			externalId: input.externalId ?? null,
-			preferredLanguage: input.preferredLanguage ?? null,
-			locale: input.locale ?? null,
 			timezone: input.timezone ?? null,
 			emailVerified: null,
 		})
@@ -225,33 +199,12 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 		if (input.name.formatted !== undefined) {
 			values.name = input.name.formatted;
 		}
-		if (input.name.givenName !== undefined) {
-			values.givenName = input.name.givenName;
-		}
-		if (input.name.familyName !== undefined) {
-			values.familyName = input.name.familyName;
-		}
 	}
 	if (input.displayName !== undefined) {
 		values.displayName = input.displayName;
 	}
-	if (input.nickname !== undefined) {
-		values.nickname = input.nickname;
-	}
-	if (input.phoneNumbers !== undefined) {
-		values.phoneNumber = input.phoneNumbers[0]?.value ?? null;
-	}
 	if (input.photos !== undefined) {
 		values.image = input.photos[0]?.value ?? null;
-	}
-	if (input.externalId !== undefined) {
-		values.externalId = input.externalId;
-	}
-	if (input.preferredLanguage !== undefined) {
-		values.preferredLanguage = input.preferredLanguage;
-	}
-	if (input.locale !== undefined) {
-		values.locale = input.locale;
 	}
 	if (input.timezone !== undefined) {
 		values.timezone = input.timezone;

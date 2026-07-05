@@ -29,19 +29,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
 			email: schema.user.email,
 			emailVerified: schema.user.emailVerified,
 			name: schema.user.name,
-			givenName: schema.user.givenName,
-			familyName: schema.user.familyName,
 			displayName: schema.user.displayName,
-			nickname: schema.user.nickname,
 			image: schema.user.image,
-			phoneNumber: schema.user.phoneNumber,
-			phoneNumberVerified: schema.user.phoneNumberVerified,
-			profileUrl: schema.user.profileUrl,
-			websiteUrl: schema.user.websiteUrl,
-			address: schema.user.address,
-			externalId: schema.user.externalId,
-			preferredLanguage: schema.user.preferredLanguage,
-			locale: schema.user.locale,
 			timezone: schema.user.timezone,
 			roleId: schema.user.roleId,
 			createdAt: schema.user.createdAt,
@@ -90,22 +79,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	let emailChanged = false;
 	let oldEmail = current.email;
 
-	const stringFields = [
-		"name",
-		"givenName",
-		"familyName",
-		"displayName",
-		"nickname",
-		"image",
-		"phoneNumber",
-		"profileUrl",
-		"websiteUrl",
-		"address",
-		"externalId",
-		"preferredLanguage",
-		"locale",
-		"timezone",
-	] as const;
+	const stringFields = ["name", "displayName", "image", "timezone"] as const;
 
 	for (const field of stringFields) {
 		if (parsed[field] !== undefined) {

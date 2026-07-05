@@ -20,18 +20,8 @@ export const passwordChangeSchema = z.object({
 
 export const profileUpdateSchema = z.object({
 	name: z.string().nullable().optional(),
-	givenName: z.string().nullable().optional(),
-	familyName: z.string().nullable().optional(),
 	displayName: z.string().nullable().optional(),
-	nickname: z.string().nullable().optional(),
 	image: z.string().nullable().optional(),
-	phoneNumber: z.string().nullable().optional(),
-	profileUrl: z.string().nullable().optional(),
-	websiteUrl: z.string().nullable().optional(),
-	address: z.string().nullable().optional(),
-	externalId: z.string().nullable().optional(),
-	preferredLanguage: z.string().nullable().optional(),
-	locale: z.string().nullable().optional(),
 	timezone: z.string().nullable().optional(),
 	username: z.string().min(3).max(64).optional(),
 });

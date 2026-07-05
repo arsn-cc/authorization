@@ -436,30 +436,8 @@ export async function generateIdToken(
 					payload.name = user.name;
 				}
 				payload.preferredUsername = user.username;
-				if (user.givenName) {
-					payload.givenName = user.givenName;
-				}
-				if (user.familyName) {
-					payload.familyName = user.familyName;
-				}
-				if (user.nickname) {
-					payload.nickname = user.nickname;
-				}
 				if (user.image) {
 					payload.picture = user.image;
-				}
-				if (user.profileUrl) {
-					payload.profile = user.profileUrl;
-				}
-				if (user.websiteUrl) {
-					payload.website = user.websiteUrl;
-				}
-				if (user.address) {
-					try {
-						payload.address = JSON.parse(user.address) as Record<string, unknown>;
-					} catch {
-						payload.address = user.address as unknown as Record<string, unknown>;
-					}
 				}
 				if (user.updatedAt) {
 					payload.updatedAt = Math.floor(user.updatedAt.getTime() / 1000);
@@ -467,19 +445,10 @@ export async function generateIdToken(
 				if (user.timezone) {
 					payload.zoneinfo = user.timezone;
 				}
-				if (user.locale) {
-					payload.locale = user.locale;
-				}
 			}
 			if (scopes.includes("email")) {
 				payload.email = user.email;
 				payload.emailVerified = !!user.emailVerified;
-			}
-			if (scopes.includes("phone")) {
-				if (user.phoneNumber) {
-					payload.phoneNumber = user.phoneNumber;
-				}
-				payload.phoneNumberVerified = !!user.phoneNumberVerified;
 			}
 		}
 	}
@@ -676,30 +645,8 @@ export async function getUserInfo(accessTokenValue: string, client?: OAuthClient
 					result.name = user.name;
 				}
 				result.preferredUsername = user.username;
-				if (user.givenName) {
-					result.givenName = user.givenName;
-				}
-				if (user.familyName) {
-					result.familyName = user.familyName;
-				}
-				if (user.nickname) {
-					result.nickname = user.nickname;
-				}
 				if (user.image) {
 					result.picture = user.image;
-				}
-				if (user.profileUrl) {
-					result.profile = user.profileUrl;
-				}
-				if (user.websiteUrl) {
-					result.website = user.websiteUrl;
-				}
-				if (user.address) {
-					try {
-						result.address = JSON.parse(user.address) as Record<string, unknown>;
-					} catch {
-						result.address = user.address as unknown as Record<string, unknown>;
-					}
 				}
 				if (user.updatedAt) {
 					result.updatedAt = Math.floor(user.updatedAt.getTime() / 1000);
@@ -707,21 +654,11 @@ export async function getUserInfo(accessTokenValue: string, client?: OAuthClient
 				if (user.timezone) {
 					result.zoneinfo = user.timezone;
 				}
-				if (user.locale) {
-					result.locale = user.locale;
-				}
 			}
 
 			if (scopes.includes("email")) {
 				result.email = user.email;
 				result.emailVerified = !!user.emailVerified;
-			}
-
-			if (scopes.includes("phone")) {
-				if (user.phoneNumber) {
-					result.phoneNumber = user.phoneNumber;
-				}
-				result.phoneNumberVerified = !!user.phoneNumberVerified;
 			}
 		}
 	}
@@ -774,21 +711,12 @@ export async function getDiscoveryDocument(issuer: string): Promise<DiscoveryDoc
 			"authTime",
 			"nonce",
 			"name",
-			"givenName",
-			"familyName",
-			"nickname",
 			"preferredUsername",
 			"picture",
-			"profile",
-			"website",
 			"email",
 			"emailVerified",
-			"phoneNumber",
-			"phoneNumberVerified",
-			"address",
 			"updatedAt",
 			"zoneinfo",
-			"locale",
 		],
 		codeChallengeMethodsSupported: ["S256", "plain"],
 	};

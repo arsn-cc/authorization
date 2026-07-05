@@ -23,15 +23,7 @@ export interface RegisterInput {
 	username: string;
 	password: string;
 	name?: string;
-	givenName?: string;
-	familyName?: string;
 	displayName?: string;
-	nickname?: string;
-	phoneNumber?: string;
-	profileUrl?: string;
-	websiteUrl?: string;
-	preferredLanguage?: string;
-	locale?: string;
 	timezone?: string;
 }
 
@@ -66,20 +58,9 @@ export interface UserResult {
 	username: string;
 	email: string;
 	name: string | null;
-	givenName: string | null;
-	familyName: string | null;
 	displayName: string | null;
-	nickname: string | null;
 	emailVerified: Date | null;
 	image: string | null;
-	phoneNumber: string | null;
-	phoneNumberVerified: Date | null;
-	profileUrl: string | null;
-	websiteUrl: string | null;
-	address: string | null;
-	externalId: string | null;
-	preferredLanguage: string | null;
-	locale: string | null;
 	timezone: string | null;
 	roleId: number | null;
 	totpEnabled: boolean;

@@ -55,10 +55,7 @@ export function generateAssertion(
 		id: number;
 		email: string;
 		name?: string;
-		givenName?: string | null;
-		familyName?: string | null;
 		displayName?: string | null;
-		nickname?: string | null;
 	},
 	sessionIndex?: string,
 ): string {
@@ -80,18 +77,8 @@ export function generateAssertion(
 	if (user.name) {
 		attrs.push({ name: "name", values: [user.name] });
 	}
-	if (user.givenName) {
-		attrs.push({ name: "givenName", values: [user.givenName] });
-	}
-	if (user.familyName) {
-		attrs.push({ name: "sn", values: [user.familyName] });
-		attrs.push({ name: "familyName", values: [user.familyName] });
-	}
 	if (user.displayName) {
 		attrs.push({ name: "displayName", values: [user.displayName] });
-	}
-	if (user.nickname) {
-		attrs.push({ name: "nickname", values: [user.nickname] });
 	}
 
 	let attrXml = "";
@@ -230,10 +217,7 @@ export function generateSamlResponse(
 		id: number;
 		email: string;
 		name?: string;
-		givenName?: string | null;
-		familyName?: string | null;
 		displayName?: string | null;
-		nickname?: string | null;
 	},
 	sessionIndex?: string,
 	requestId?: string,
