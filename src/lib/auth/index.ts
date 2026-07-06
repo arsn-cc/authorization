@@ -124,6 +124,15 @@ async function sendTwoFactorEmail(to: string, username: string | null, pendingTo
 	}
 }
 
+async function warmUserCache(user: typeof schema.user.$inferSelect) {
+	const cache = await getCache();
+	const userResult = toUserResult(user);
+	await Promise.all([
+		cache.set(userByIdKey(user.id), userResult, CACHE_TTL_USER),
+		cache.set(userByUsernameKey(user.username), userResult, CACHE_TTL_USER),
+	]);
+}
+
 async function sendLoginNotificationEmail(
 	user: { username: string; name: string | null; emailVerified: Date | null },
 	input: LoginInput,
@@ -215,12 +224,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 		await sendVerifyEmailForUser(usernameToEmail(inserted.username), inserted.id, inserted.name);
 	}
 
-	// Warm cache for the new user
-	const cache = await getCache();
-	await Promise.all([
-		cache.set(userByIdKey(inserted.id), userData, CACHE_TTL_USER),
-		cache.set(userByUsernameKey(inserted.username), userData, CACHE_TTL_USER),
-	]);
+	await warmUserCache(inserted);
 
 	return ok(userData);
 }
@@ -429,15 +433,7 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 
 	const cache = await getCache();
 	await cache.set(sessionKey(token), result, sessionTtlSeconds(expires));
-
-	// Warm user cache for subsequent lookups
-	{
-		const userResult = toUserResult(user);
-		await Promise.all([
-			cache.set(userByIdKey(user.id), userResult, CACHE_TTL_USER),
-			cache.set(userByUsernameKey(user.username), userResult, CACHE_TTL_USER),
-		]);
-	}
+	await warmUserCache(user);
 
 	return ok(result);
 }
