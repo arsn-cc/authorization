@@ -281,9 +281,11 @@ export function generateSamlLogoutResponse(config: SamlConfig): string {
 </saml2p:LogoutResponse>`;
 }
 
+const MAX_SAML_DEFLATE_SIZE = 1_048_576; // 1 MB
+
 export function decodeSamlRequest(base64Encoded: string): string {
 	const decoded = Buffer.from(base64Encoded, "base64");
-	const inflated = inflateRawSync(decoded);
+	const inflated = inflateRawSync(decoded, { maxOutputLength: MAX_SAML_DEFLATE_SIZE });
 	return inflated.toString("utf-8");
 }
 
