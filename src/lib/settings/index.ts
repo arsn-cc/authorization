@@ -5,6 +5,8 @@ import { getCache } from "@/lib/cache";
 
 const CACHE_TTL_SETTING = 300; // 5 minutes — settings change infrequently
 
+export const KNOWN_SETTINGS = new Set(["primary_color", "disable_registration"]);
+
 function settingKey(name: string): string {
 	return `setting:${name}`;
 }
