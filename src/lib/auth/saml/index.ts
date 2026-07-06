@@ -193,7 +193,7 @@ export function verifyAuthnRequestSignature(
 	certificatePem: string,
 ): boolean {
 	try {
-		if (!sigAlg.includes("rsa-sha256")) {
+		if (sigAlg !== "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256") {
 			return false;
 		}
 		const cert = `-----BEGIN CERTIFICATE-----\n${certificatePem}\n-----END CERTIFICATE-----`;
