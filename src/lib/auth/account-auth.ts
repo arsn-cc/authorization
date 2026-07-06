@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { and, eq, gte, isNull } from "drizzle-orm";
+import { and, eq, gte, isNull, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth";
@@ -32,7 +32,11 @@ async function getBearerUser(token: string): Promise<{ userId: number; user: Use
 		.select({ user: schema.user, pat: { id: schema.personalAccessToken.id } })
 		.from(schema.personalAccessToken)
 		.where(
-			and(eq(schema.personalAccessToken.tokenHash, hashToken(token)), isNull(schema.personalAccessToken.revokedAt)),
+			and(
+				eq(schema.personalAccessToken.tokenHash, hashToken(token)),
+				isNull(schema.personalAccessToken.revokedAt),
+				or(isNull(schema.personalAccessToken.expiresAt), gte(schema.personalAccessToken.expiresAt, new Date())),
+			),
 		)
 		.innerJoin(schema.user, eq(schema.personalAccessToken.userId, schema.user.id));
 
