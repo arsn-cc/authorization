@@ -169,10 +169,6 @@ async function sendLoginNotificationEmail(
 // ── Registration ───────────────────────────────────────────────────
 
 export async function registerUser(input: RegisterInput): Promise<AuthResult<UserResult>> {
-	const registrationDisabled = await getSetting("disable_registration");
-	if (registrationDisabled === "true") {
-		return err(new AuthError("Registration is disabled"), "REGISTRATION_DISABLED");
-	}
 	if (!isValidUsername(input.username)) {
 		return err(
 			new AuthError("Username must be 3-64 characters; letters, numbers, dots, hyphens, underscores"),
@@ -184,6 +180,11 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult<Use
 			new AuthError("Password must be at least 8 characters with uppercase, lowercase, digit, and special character"),
 			"VALIDATION_ERROR",
 		);
+	}
+
+	const registrationDisabled = await getSetting("disable_registration");
+	if (registrationDisabled === "true") {
+		return err(new AuthError("Registration is disabled"), "REGISTRATION_DISABLED");
 	}
 
 	const db = await getDb();
