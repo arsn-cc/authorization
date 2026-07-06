@@ -5,6 +5,7 @@ import { schema } from "@/lib/db/schema";
 import { getStorage } from "@/lib/storage";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { invalidateUser } from "@/lib/auth/cache";
+import { validateImageHeader } from "@/lib/http/validate";
 import { withSecurityHeaders } from "@/lib/http/response";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
@@ -29,6 +30,11 @@ export async function POST(req: Request): Promise<Response> {
 
 	if (file.size > MAX_SIZE) {
 		return withSecurityHeaders(Response.json({ error: "file_too_large" }, { status: 400 }));
+	}
+
+	const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+	if (!validateImageHeader(header, file.type)) {
+		return withSecurityHeaders(Response.json({ error: "invalid_file" }, { status: 400 }));
 	}
 
 	const ext = file.name.split(".").pop() ?? "jpg";
