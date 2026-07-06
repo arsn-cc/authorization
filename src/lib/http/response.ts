@@ -3,6 +3,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 	"x-frame-options": "DENY",
 	"x-xss-protection": "0",
 	"referrer-policy": "strict-origin-when-cross-origin",
+	"access-control-allow-origin": "*",
 };
 
 export function withSecurityHeaders(response: Response): Response {
