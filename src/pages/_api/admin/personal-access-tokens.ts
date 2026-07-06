@@ -10,8 +10,8 @@ import { hashToken } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 const createPatBodySchema = createPatSchema.extend({
-	userId: z.number().optional(),
-	expiresInDays: z.number().optional(),
+	userId: z.number().positive().int().optional(),
+	expiresInDays: z.number().positive().int().optional(),
 });
 
 export async function GET(req: Request): Promise<Response> {
