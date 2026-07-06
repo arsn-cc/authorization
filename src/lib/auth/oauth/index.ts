@@ -549,6 +549,47 @@ export async function exchangeClientCredentials(request: ClientCredentials): Pro
 	};
 }
 
+type CachedRefreshRow = {
+	userId: number;
+	scope: string;
+	sessionId: number | null;
+	expiresAt: Date;
+};
+
+async function rotateRefreshToken(
+	client: OAuthClient,
+	row: CachedRefreshRow,
+	request: TokenRequest,
+	oldToken?: string,
+): Promise<TokenResponse> {
+	const rotationEnabled = client.refreshTokenRotationEnabled ?? true;
+	const reuseEnabled = client.reuseRefreshTokens ?? false;
+
+	if (!rotationEnabled && !reuseEnabled) {
+		throw new Error("invalid_grant");
+	}
+
+	const sessionId = row.sessionId ?? undefined;
+	const accessTokenValue = await generateAccessToken(client, row.userId, row.scope, sessionId);
+	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();
+
+	const response: TokenResponse = {
+		accessToken: accessTokenValue,
+		tokenType: "Bearer",
+		expiresIn: ttl,
+		scope: row.scope,
+	};
+
+	if (rotationEnabled) {
+		const newRefreshTokenValue = await generateRefreshToken(client.clientId, row.userId, row.scope, sessionId);
+		response.refreshToken = newRefreshTokenValue;
+	} else if (reuseEnabled) {
+		response.refreshToken = oldToken ?? request.refreshToken!;
+	}
+
+	return response;
+}
+
 export async function exchangeRefreshToken(request: TokenRequest): Promise<TokenResponse> {
 	if (!request.refreshToken) {
 		throw new Error("invalid_request");
@@ -585,30 +626,7 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 
 	await deleteCachedOAuthRefreshToken(request.refreshToken);
 
-	const rotationEnabled = client.refreshTokenRotationEnabled ?? true;
-	const reuseEnabled = client.reuseRefreshTokens ?? false;
-
-	if (!rotationEnabled && !reuseEnabled) {
-		throw new Error("invalid_grant");
-	}
-
-	const sessionId = row.sessionId ?? undefined;
-	const accessTokenValue = await generateAccessToken(client, row.userId, row.scope, sessionId);
-	const ttl = client.accessTokenTtl ?? getAccessTokenTtl();
-
-	const response: TokenResponse = {
-		accessToken: accessTokenValue,
-		tokenType: "Bearer",
-		expiresIn: ttl,
-		scope: row.scope,
-	};
-
-	if (rotationEnabled) {
-		const newRefreshTokenValue = await generateRefreshToken(client.clientId, row.userId, row.scope, sessionId);
-		response.refreshToken = newRefreshTokenValue;
-	} else if (reuseEnabled) {
-		response.refreshToken = request.refreshToken;
-	}
+	const response = await rotateRefreshToken(client, row, request, undefined);
 
 	return response;
 }

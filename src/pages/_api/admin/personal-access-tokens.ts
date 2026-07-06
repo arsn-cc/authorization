@@ -85,6 +85,17 @@ export async function POST(req: Request): Promise<Response> {
 
 	const userId = targetUserId;
 	const db = await getDb();
+
+	const [targetUser] = await db
+		.select({ id: schema.user.id })
+		.from(schema.user)
+		.where(eq(schema.user.id, userId))
+		.limit(1);
+
+	if (!targetUser) {
+		return withSecurityHeaders(Response.json({ error: "user_not_found" }, { status: 404 }));
+	}
+
 	const token = `pat_${randomBytes(32).toString("hex")}`;
 	const { name, scopes } = parsed;
 	const expiresIn = parsed.expiresInDays ?? null;
