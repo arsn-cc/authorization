@@ -784,6 +784,33 @@ export async function requestAccountDeletion(
 	return ok(true as const);
 }
 
+async function deleteUserAndCleanup(
+	db: ReturnType<typeof getDb> extends Promise<infer T> ? T : never,
+	userId: number,
+	tokenId: number,
+): Promise<void> {
+	const cache = await getCache();
+
+	const sessions = await db
+		.select({ token: schema.session.token })
+		.from(schema.session)
+		.where(eq(schema.session.userId, userId));
+
+	await db.transaction(async (tx) => {
+		await tx
+			.update(schema.accountDeletionToken)
+			.set({ usedAt: new Date() })
+			.where(eq(schema.accountDeletionToken.id, tokenId));
+		await tx.delete(schema.session).where(eq(schema.session.userId, userId));
+		await tx.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.userId, userId));
+		await tx.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.userId, userId));
+		await tx.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.userId, userId));
+		await tx.delete(schema.user).where(eq(schema.user.id, userId));
+	});
+
+	await Promise.all(sessions.map((s) => cache.delete(sessionKey(s.token))));
+}
+
 export async function confirmAccountDeletion(token: string): Promise<AuthResult<true>> {
 	const tokenResult = tokenSchema.safeParse(token);
 	if (!tokenResult.success) {
@@ -807,33 +834,13 @@ export async function confirmAccountDeletion(token: string): Promise<AuthResult<
 		return err(new AuthError("User not found"), "NOT_FOUND");
 	}
 
-	// Send deletion notification before removing the user
 	if (!isPreview) {
 		await sendAccountDeletedEmail(usernameToEmail(user.username), {
 			username: user.name ?? user.username,
 		});
 	}
 
-	const cache = await getCache();
-
-	const sessions = await db
-		.select({ token: schema.session.token })
-		.from(schema.session)
-		.where(eq(schema.session.userId, row.userId));
-
-	await db.transaction(async (tx) => {
-		await tx
-			.update(schema.accountDeletionToken)
-			.set({ usedAt: new Date() })
-			.where(eq(schema.accountDeletionToken.id, row.id));
-		await tx.delete(schema.session).where(eq(schema.session.userId, row.userId));
-		await tx.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.userId, row.userId));
-		await tx.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.userId, row.userId));
-		await tx.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.userId, row.userId));
-		await tx.delete(schema.user).where(eq(schema.user.id, row.userId));
-	});
-
-	await Promise.all(sessions.map((s) => cache.delete(sessionKey(s.token))));
+	await deleteUserAndCleanup(db, row.userId, row.id);
 
 	return ok(true as const);
 }
