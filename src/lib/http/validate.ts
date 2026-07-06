@@ -75,6 +75,12 @@ const WEBP_SUB = [0x57, 0x45, 0x42, 0x50]; // "WEBP"
 const AVIF_FTYP = [0x66, 0x74, 0x79, 0x70]; // "ftyp"
 const AVIF_BRAND = [0x61, 0x76, 0x69, 0x66]; // "avif"
 
+export function parsePagination(url: URL, defaultPerPage = 20): { page: number; perPage: number } {
+	const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+	const perPage = Math.min(100, Math.max(1, Number(url.searchParams.get("per_page")) || defaultPerPage));
+	return { page, perPage };
+}
+
 export function validateImageHeader(bytes: Uint8Array, mime: string): boolean {
 	for (const fmt of IMAGE_MAGIC_BYTES) {
 		if (fmt.mime === mime) {

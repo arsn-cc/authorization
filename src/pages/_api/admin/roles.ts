@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { parseJsonSafe } from "@/lib/http/validate";
+import { parseJsonSafe, parsePagination } from "@/lib/http/validate";
 import { createRoleSchema } from "@/lib/schemas/admin";
 import { count, ilike, or, asc, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
@@ -14,8 +14,7 @@ export async function GET(req: Request): Promise<Response> {
 
 	const db = await getDb();
 	const url = new URL(req.url);
-	const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-	const perPage = Math.min(100, Math.max(1, Number(url.searchParams.get("per_page")) || 20));
+	const { page, perPage } = parsePagination(url);
 	const search = url.searchParams.get("search");
 	const sort = url.searchParams.get("sort") ?? "id";
 	const order = url.searchParams.get("order") ?? "desc";

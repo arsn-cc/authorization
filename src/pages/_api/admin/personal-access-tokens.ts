@@ -1,6 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { z } from "zod";
-import { parseJsonSafe } from "@/lib/http/validate";
+import { parseJsonSafe, parsePagination } from "@/lib/http/validate";
 import { createPatSchema } from "@/lib/schemas/admin";
 import { and, count, eq, desc, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
@@ -22,8 +22,7 @@ export async function GET(req: Request): Promise<Response> {
 
 	const db = await getDb();
 	const url = new URL(req.url);
-	const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-	const perPage = Math.min(100, Math.max(1, Number(url.searchParams.get("per_page")) || 20));
+	const { page, perPage } = parsePagination(url);
 	const userId = url.searchParams.get("userId");
 	const showRevoked = url.searchParams.get("showRevoked") === "true";
 
