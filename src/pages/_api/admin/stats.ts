@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { count, gte } from "drizzle-orm";
+import { and, count, gte, isNull, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
@@ -23,7 +23,15 @@ export async function GET(req: Request): Promise<Response> {
 		.select({ value: count() })
 		.from(schema.oauthAccessToken)
 		.where(gte(schema.oauthAccessToken.expiresAt, new Date()));
-	const [patCount] = await db.select({ value: count() }).from(schema.personalAccessToken);
+	const [patCount] = await db
+		.select({ value: count() })
+		.from(schema.personalAccessToken)
+		.where(
+			and(
+				isNull(schema.personalAccessToken.revokedAt),
+				or(isNull(schema.personalAccessToken.expiresAt), gte(schema.personalAccessToken.expiresAt, new Date())),
+			),
+		);
 
 	return withSecurityHeaders(
 		Response.json({
@@ -31,7 +39,7 @@ export async function GET(req: Request): Promise<Response> {
 			sessions: { active30d: sessionCount?.value ?? 0 },
 			clients: { total: clientCount?.value ?? 0 },
 			tokens: { active: activeTokenCount?.value ?? 0 },
-			personalAccessTokens: { total: patCount?.value ?? 0 },
+			personalAccessTokens: { active: patCount?.value ?? 0 },
 		}),
 	);
 }
