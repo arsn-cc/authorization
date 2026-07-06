@@ -1,10 +1,6 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { and, eq, gte, isNull } from "drizzle-orm";
-import { getDb } from "@/lib/db";
-import { schema } from "@/lib/db/schema";
-import { getSession as getWebSession } from "@/lib/auth";
-import { getRoleById, toUserResult } from "@/lib/auth/cache";
-import { hashToken, parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+import { getRoleById } from "@/lib/auth/cache";
+import { getRequestUser } from "@/lib/auth/account-auth";
 import type { UserResult } from "@/lib/auth/types";
 
 export const AdminPermission = {
@@ -38,74 +34,11 @@ interface AdminUser {
 }
 
 async function getAdminUser(req: Request): Promise<AdminUser | null> {
-	const auth = req.headers.get("authorization");
-	if (auth?.startsWith("Bearer ")) {
-		const token = auth.slice(7);
-		const db = await getDb();
-
-		const [row] = await db
-			.select({
-				token: schema.oauthAccessToken,
-				user: schema.user,
-			})
-			.from(schema.oauthAccessToken)
-			.where(
-				and(
-					eq(schema.oauthAccessToken.tokenHash, hashToken(token)),
-					gte(schema.oauthAccessToken.expiresAt, new Date()),
-				),
-			)
-			.innerJoin(schema.user, eq(schema.oauthAccessToken.userId, schema.user.id));
-
-		if (row) {
-			return {
-				userId: row.token.userId!,
-				user: toUserResult(row.user),
-			};
-		}
-
-		const [patRow] = await db
-			.select({
-				pat: schema.personalAccessToken,
-				user: schema.user,
-			})
-			.from(schema.personalAccessToken)
-			.where(
-				and(eq(schema.personalAccessToken.tokenHash, hashToken(token)), isNull(schema.personalAccessToken.revokedAt)),
-			)
-			.innerJoin(schema.user, eq(schema.personalAccessToken.userId, schema.user.id));
-
-		if (patRow) {
-			const now = new Date();
-			await db
-				.update(schema.personalAccessToken)
-				.set({ lastUsedAt: now })
-				.where(eq(schema.personalAccessToken.id, patRow.pat.id));
-
-			return {
-				userId: patRow.user.id,
-				user: toUserResult(patRow.user),
-			};
-		}
-
+	const authed = await getRequestUser(req);
+	if (!authed) {
 		return null;
 	}
-
-	const cookie = req.headers.get("cookie") ?? "";
-	const sessionToken = parseCookie(cookie, SESSION_COOKIE_NAME);
-	if (!sessionToken) {
-		return null;
-	}
-
-	const session = await getWebSession(sessionToken);
-	if (!session.success || !session.data) {
-		return null;
-	}
-
-	return {
-		userId: session.data.userId,
-		user: session.data.user,
-	};
+	return { userId: authed.userId, user: authed.user };
 }
 
 export async function requirePermission(req: Request, permission: AdminPermission): Promise<AdminUser | Response> {
