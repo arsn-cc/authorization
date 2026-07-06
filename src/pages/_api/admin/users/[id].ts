@@ -179,6 +179,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.userId, userId)),
 		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.userId, userId)),
 		db.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.userId, userId)),
+		db.delete(schema.personalAccessToken).where(eq(schema.personalAccessToken.userId, userId)),
+		db.delete(schema.passwordResetToken).where(eq(schema.passwordResetToken.userId, userId)),
+		db.delete(schema.pendingAuthToken).where(eq(schema.pendingAuthToken.userId, userId)),
+		db.delete(schema.emailVerificationToken).where(eq(schema.emailVerificationToken.userId, userId)),
+		db.delete(schema.accountDeletionToken).where(eq(schema.accountDeletionToken.userId, userId)),
+		db.delete(schema.accountUnlockToken).where(eq(schema.accountUnlockToken.userId, userId)),
+		db.delete(schema.emailTwoFactorToken).where(eq(schema.emailTwoFactorToken.userId, userId)),
 		db.delete(schema.user).where(eq(schema.user.id, userId)),
 		...sessions.map((s) => cache.delete(sessionKey(s.token))),
 	]);
