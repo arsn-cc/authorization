@@ -574,6 +574,12 @@ export async function exchangeRefreshToken(request: TokenRequest): Promise<Token
 		.returning({ id: schema.oauthRefreshToken.id });
 
 	if (!updated) {
+		// Token reuse detected — revoke all refresh tokens for this user+client
+		await db
+			.delete(schema.oauthRefreshToken)
+			.where(
+				and(eq(schema.oauthRefreshToken.userId, row.userId), eq(schema.oauthRefreshToken.clientId, request.clientId)),
+			);
 		throw new Error("invalid_grant");
 	}
 

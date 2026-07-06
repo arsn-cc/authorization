@@ -36,6 +36,15 @@ export async function GET(req: Request): Promise<Response> {
 		);
 	}
 
+	if (!stateParam) {
+		return withSecurityHeaders(
+			Response.json(
+				{ error: "invalid_request", error_description: "state parameter is required for CSRF protection" },
+				{ status: 400 },
+			),
+		);
+	}
+
 	const client = await getClientById(clientId);
 	if (!client) {
 		return withSecurityHeaders(
@@ -57,7 +66,9 @@ export async function GET(req: Request): Promise<Response> {
 		);
 	}
 
-	if (client.pkceRequired && !codeChallengeParam) {
+	const isPublicClient = !client.clientSecret || client.tokenEndpointAuthMethod === "none";
+	const pkceRequired = client.pkceRequired || isPublicClient;
+	if (pkceRequired && !codeChallengeParam) {
 		return withSecurityHeaders(
 			Response.json(
 				{ error: "invalid_request", error_description: "PKCE is required for this client" },
@@ -69,14 +80,29 @@ export async function GET(req: Request): Promise<Response> {
 	if (scope && !scope.split(" ").every((s) => client.scopes.split(" ").includes(s))) {
 		const dest = new URL(redirectUri);
 		dest.searchParams.set("error", "invalid_scope");
-		if (stateParam) {
-			dest.searchParams.set("state", stateParam);
-		}
+		dest.searchParams.set("state", stateParam);
 		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
 	}
 
 	const prompt = url.searchParams.get("prompt");
+	const allowedPrompts = ["none", "login", "consent", "select_account"];
+	if (prompt && !allowedPrompts.includes(prompt)) {
+		const dest = new URL(redirectUri);
+		dest.searchParams.set("error", "invalid_request");
+		dest.searchParams.set("state", stateParam);
+		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
+	}
+
 	const maxAge = url.searchParams.get("max_age");
+	if (maxAge) {
+		const maxAgeNum = Number(maxAge);
+		if (!Number.isInteger(maxAgeNum) || maxAgeNum < 0) {
+			const dest = new URL(redirectUri);
+			dest.searchParams.set("error", "invalid_request");
+			dest.searchParams.set("state", stateParam);
+			return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
+		}
+	}
 
 	const cookie = req.headers.get("cookie") ?? "";
 	const token = parseCookie(cookie, SESSION_COOKIE_NAME);
@@ -95,9 +121,7 @@ export async function GET(req: Request): Promise<Response> {
 	if (prompt === "none" && !sessionUserId) {
 		const dest = new URL(redirectUri);
 		dest.searchParams.set("error", "login_required");
-		if (stateParam) {
-			dest.searchParams.set("state", stateParam);
-		}
+		dest.searchParams.set("state", stateParam);
 		return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
 	}
 
@@ -126,7 +150,7 @@ export async function GET(req: Request): Promise<Response> {
 		clientId,
 		redirectUri,
 		scope,
-		...(stateParam ? { state: stateParam } : {}),
+		state: stateParam,
 		...(codeChallengeParam ? { codeChallenge: codeChallengeParam } : {}),
 		...(codeChallengeMethodParam ? { codeChallengeMethod: codeChallengeMethodParam } : {}),
 		...(nonceParam ? { nonce: nonceParam } : {}),
@@ -136,9 +160,7 @@ export async function GET(req: Request): Promise<Response> {
 
 	const dest = new URL(redirectUri);
 	dest.searchParams.set("code", code);
-	if (stateParam) {
-		dest.searchParams.set("state", stateParam);
-	}
+	dest.searchParams.set("state", stateParam);
 
 	return withSecurityHeaders(new Response(null, { status: 302, headers: { Location: dest.toString() } }));
 }
