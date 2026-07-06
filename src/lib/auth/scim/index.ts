@@ -31,6 +31,7 @@ function userToScim(u: {
 	image: string | null;
 	timezone: string | null;
 	emailVerified: Date | null;
+	lockedUntil: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
 }): ScimUser {
@@ -46,7 +47,7 @@ function userToScim(u: {
 		emails: [{ value: usernameToEmail(u.username), primary: true }],
 		...(u.image ? { photos: [{ value: u.image }] } : {}),
 		...(u.timezone ? { timezone: u.timezone } : {}),
-		active: true,
+		active: !(u.lockedUntil && u.lockedUntil > new Date()),
 		meta: {
 			resourceType: "User",
 			created: u.createdAt.toISOString(),
@@ -208,7 +209,7 @@ export async function updateUser(id: number, input: Partial<ScimUser>): Promise<
 		values.timezone = input.timezone;
 	}
 	if (input.active !== undefined) {
-		values.emailVerified = null;
+		values.lockedUntil = input.active ? null : new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000);
 	}
 
 	const [updated] = await db.update(schema.user).set(values).where(eq(schema.user.id, id)).returning();
