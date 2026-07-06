@@ -124,6 +124,39 @@ async function sendTwoFactorEmail(to: string, username: string | null, pendingTo
 	}
 }
 
+async function sendLoginNotificationEmail(
+	user: { username: string; name: string | null; emailVerified: Date | null },
+	input: LoginInput,
+) {
+	if (isPreview || !user.emailVerified) {
+		return;
+	}
+
+	const now = new Date();
+	const time = now.toISOString();
+	const userEmail = usernameToEmail(user.username);
+	const html = await renderLoginNotification({
+		...(user.name ? { username: user.name } : {}),
+		email: userEmail,
+		time,
+		...(input.ip ? { ip: input.ip } : {}),
+		...(input.location ? { location: input.location } : {}),
+		...(input.timezone ? { timezone: input.timezone } : {}),
+		...(input.language ? { language: input.language } : {}),
+		...(input.deviceType ? { deviceType: input.deviceType } : {}),
+		...(input.os ? { os: input.os } : {}),
+		...(input.browser ? { browser: input.browser } : {}),
+	});
+	const emailResult = await sendEmail({
+		to: userEmail,
+		subject: `Login Notification - ${time}`,
+		html,
+	});
+	if (!emailResult.success) {
+		console.error("Failed to send login notification email:", emailResult.error);
+	}
+}
+
 // ── Registration ───────────────────────────────────────────────────
 
 export async function registerUser(input: RegisterInput): Promise<AuthResult<UserResult>> {
@@ -362,32 +395,7 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 	const now = new Date();
 	const expires = inDays(SESSION_TTL_DAYS);
 
-	if (user.emailVerified) {
-		if (!isPreview) {
-			const time = now.toISOString();
-			const userEmail = usernameToEmail(user.username);
-			const html = await renderLoginNotification({
-				...(user.name ? { username: user.name } : {}),
-				email: userEmail,
-				time,
-				...(input.ip ? { ip: input.ip } : {}),
-				...(input.location ? { location: input.location } : {}),
-				...(input.timezone ? { timezone: input.timezone } : {}),
-				...(input.language ? { language: input.language } : {}),
-				...(input.deviceType ? { deviceType: input.deviceType } : {}),
-				...(input.os ? { os: input.os } : {}),
-				...(input.browser ? { browser: input.browser } : {}),
-			});
-			const emailResult = await sendEmail({
-				to: userEmail,
-				subject: `Login Notification - ${time}`,
-				html,
-			});
-			if (!emailResult.success) {
-				console.error("Failed to send login notification email:", emailResult.error);
-			}
-		}
-	}
+	await sendLoginNotificationEmail(user, input);
 
 	const [inserted] = await db
 		.insert(schema.session)
