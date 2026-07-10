@@ -86,4 +86,14 @@ export const createPatSchema = z.object({
 	scopes: z.string().optional().default("admin:read"),
 });
 
-export const updateSettingsSchema = z.record(z.string(), z.string().nullable().optional());
+export const updateSettingsSchema = z
+	.object({
+		primary_color: z
+			.string()
+			.regex(/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, "primary_color must be a hex color")
+			.nullable()
+			.optional(),
+		// Stored as the literal strings "true"/"false".
+		disable_registration: z.enum(["true", "false"]).nullable().optional(),
+	})
+	.partial();
