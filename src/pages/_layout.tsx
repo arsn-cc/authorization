@@ -9,6 +9,12 @@ console.log(`[startup] db=postgres-js cache=redis storage=s3`);
 
 type RootLayoutProps = { children: ReactNode };
 
+// Defense-in-depth: strip characters that could break out of a <style> block
+// or inject markup, even if upstream validation is bypassed.
+function sanitizeCssValue(value: string): string {
+	return value.replace(/[<>&]/g, "");
+}
+
 export default async function RootLayout({ children }: RootLayoutProps) {
 	const data = await getData();
 	const primaryColor = await getSetting("primary_color");
@@ -27,9 +33,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 			{primaryColor && (
 				<style>{`
 					:root, .dark {
-						--primary: ${primaryColor};
-						--chart-4: ${primaryColor};
-						--sidebar-primary: ${primaryColor};
+						--primary: ${sanitizeCssValue(primaryColor)};
+						--chart-4: ${sanitizeCssValue(primaryColor)};
+						--sidebar-primary: ${sanitizeCssValue(primaryColor)};
 					}
 				`}</style>
 			)}
