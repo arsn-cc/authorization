@@ -84,6 +84,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 	if (parsed.roleId !== undefined) {
 		updates.roleId = parsed.roleId;
+		// Privilege changed: revoke existing sessions so the new role takes effect
+		// immediately. getSession caches the roleId snapshot for the full session TTL
+		// (up to 7 days); without this, a demoted/revoked user keeps prior privileges
+		// until the session expires or they re-log in.
+		const existing = await db
+			.select({ tokenHash: schema.session.tokenHash })
+			.from(schema.session)
+			.where(eq(schema.session.userId, userId));
+		await db.delete(schema.session).where(eq(schema.session.userId, userId));
+		const cache = await getCache();
+		await Promise.all(existing.map((s) => cache.delete(sessionKeyFromHash(s.tokenHash ?? ""))));
 	}
 
 	if (parsed.username && isValidUsername(parsed.username) && parsed.username !== current.username) {
