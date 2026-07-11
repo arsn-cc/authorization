@@ -11,13 +11,14 @@ export interface AuthenticatedUser {
 	userId: number;
 	sessionToken: string | null;
 	user: UserResult;
+	scopes?: string[];
 }
 
-async function getBearerUser(token: string): Promise<{ userId: number; user: UserResult } | null> {
+async function getBearerUser(token: string): Promise<{ userId: number; user: UserResult; scopes?: string[] } | null> {
 	const db = await getDb();
 
 	const [row] = await db
-		.select({ user: schema.user })
+		.select({ user: schema.user, scope: schema.oauthAccessToken.scope })
 		.from(schema.oauthAccessToken)
 		.where(
 			and(eq(schema.oauthAccessToken.tokenHash, hashToken(token)), gte(schema.oauthAccessToken.expiresAt, new Date())),
@@ -25,11 +26,19 @@ async function getBearerUser(token: string): Promise<{ userId: number; user: Use
 		.innerJoin(schema.user, eq(schema.oauthAccessToken.userId, schema.user.id));
 
 	if (row) {
-		return { userId: row.user.id, user: toUserResult(row.user) };
+		return {
+			userId: row.user.id,
+			user: toUserResult(row.user),
+			scopes: row.scope ? row.scope.split(" ") : [],
+		};
 	}
 
 	const [patRow] = await db
-		.select({ user: schema.user, pat: { id: schema.personalAccessToken.id } })
+		.select({
+			user: schema.user,
+			pat: { id: schema.personalAccessToken.id },
+			scopes: schema.personalAccessToken.scopes,
+		})
 		.from(schema.personalAccessToken)
 		.where(
 			and(
@@ -47,7 +56,11 @@ async function getBearerUser(token: string): Promise<{ userId: number; user: Use
 			.set({ lastUsedAt: now })
 			.where(eq(schema.personalAccessToken.id, patRow.pat.id));
 
-		return { userId: patRow.user.id, user: toUserResult(patRow.user) };
+		return {
+			userId: patRow.user.id,
+			user: toUserResult(patRow.user),
+			scopes: patRow.scopes ? patRow.scopes.split(" ") : [],
+		};
 	}
 
 	return null;

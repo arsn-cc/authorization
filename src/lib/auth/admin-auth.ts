@@ -31,6 +31,7 @@ export type AdminPermission = (typeof AdminPermission)[keyof typeof AdminPermiss
 interface AdminUser {
 	userId: number;
 	user: UserResult;
+	scopes?: string[];
 }
 
 async function getAdminUser(req: Request): Promise<AdminUser | null> {
@@ -38,13 +39,26 @@ async function getAdminUser(req: Request): Promise<AdminUser | null> {
 	if (!authed) {
 		return null;
 	}
-	return { userId: authed.userId, user: authed.user };
+	return { userId: authed.userId, user: authed.user, ...(authed.scopes ? { scopes: authed.scopes } : {}) };
 }
 
 export async function requirePermission(req: Request, permission: AdminPermission): Promise<AdminUser | Response> {
 	const admin = await getAdminUser(req);
 	if (!admin) {
 		return withSecurityHeaders(Response.json({ error: "unauthorized" }, { status: 401 }));
+	}
+
+	// Bearer-token scope enforcement: when the caller authenticated with a PAT
+	// or OAuth access token, the token's own scopes must also grant the required
+	// permission — not just the user's role. Session-cookie auth carries no
+	// scopes (full user context) and is exempt.
+	if (admin.scopes && !admin.scopes.includes(permission)) {
+		return withSecurityHeaders(
+			Response.json(
+				{ error: "forbidden", message: `token scope missing permission: ${permission}`, required: permission },
+				{ status: 403 },
+			),
+		);
 	}
 
 	if (admin.user.roleId === null) {
