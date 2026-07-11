@@ -211,6 +211,33 @@ export function verifyAuthnRequestSignature(
 	}
 }
 
+// Base64-decode a SAML message without DEFLATE inflation (used by the
+// HTTP-POST binding, where messages are not compressed).
+export function decodeSamlRequestRaw(base64Encoded: string): string {
+	return Buffer.from(base64Encoded, "base64").toString("utf-8");
+}
+
+// Verify the enveloped XML signature of a SAML AuthnRequest (HTTP-POST
+// binding). The signature is always validated against the configured
+// client certificate — never a certificate supplied inside the request's
+// KeyInfo — so an attacker cannot substitute their own key.
+export function verifyAuthnRequestXmlSignature(samlXml: string, certificatePem: string): boolean {
+	try {
+		const cert = `-----BEGIN CERTIFICATE-----\n${certificatePem}\n-----END CERTIFICATE-----`;
+		const sig = new SignedXml({
+			// SAML uses an uppercase "ID" attribute on the signed element.
+			idAttribute: "ID",
+			// Force the configured cert; ignore any cert embedded in KeyInfo.
+			getCertFromKeyInfo: () => cert,
+		});
+		sig.publicCert = cert;
+		sig.loadSignature(samlXml);
+		return sig.checkSignature(samlXml);
+	} catch {
+		return false;
+	}
+}
+
 export function generateSamlResponse(
 	config: SamlConfig,
 	user: {

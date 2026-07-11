@@ -4,8 +4,10 @@ import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import {
 	decodeSamlRequest,
+	decodeSamlRequestRaw,
 	validateAuthnRequest,
 	verifyAuthnRequestSignature,
+	verifyAuthnRequestXmlSignature,
 	generateSamlResponse,
 	encodeSamlResponse,
 } from "@/lib/auth/saml";
@@ -23,13 +25,6 @@ export async function POST(req: Request): Promise<Response> {
 
 async function handleSso(req: Request): Promise<Response> {
 	const url = new URL(req.url);
-	const samlRequestB64 = url.searchParams.get("SAMLRequest") ?? null;
-	const relayState = url.searchParams.get("RelayState") ?? undefined;
-
-	if (!samlRequestB64) {
-		return withSecurityHeaders(Response.json({ error: "missing_saml_request" }, { status: 400 }));
-	}
-
 	const entityId = url.searchParams.get("entity_id");
 	if (!entityId) {
 		return withSecurityHeaders(Response.json({ error: "missing_entity_id" }, { status: 400 }));
@@ -42,7 +37,30 @@ async function handleSso(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "unknown_service_provider" }, { status: 400 }));
 	}
 
-	const decoded = decodeSamlRequest(samlRequestB64);
+	const binding = client.samlBinding ?? "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";
+	const isPostBinding = req.method === "POST" && binding === "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";
+
+	let samlRequestB64: string | null;
+	let relayState: string | undefined;
+	let sigAlgParam: string | null = null;
+	let signatureParam: string | null = null;
+
+	if (isPostBinding) {
+		const form = await req.formData();
+		samlRequestB64 = (form.get("SAMLRequest") as string | null) ?? null;
+		relayState = (form.get("RelayState") as string | null) ?? undefined;
+	} else {
+		samlRequestB64 = url.searchParams.get("SAMLRequest") ?? null;
+		relayState = url.searchParams.get("RelayState") ?? undefined;
+		sigAlgParam = url.searchParams.get("SigAlg");
+		signatureParam = url.searchParams.get("Signature");
+	}
+
+	if (!samlRequestB64) {
+		return withSecurityHeaders(Response.json({ error: "missing_saml_request" }, { status: 400 }));
+	}
+
+	const decoded = isPostBinding ? decodeSamlRequestRaw(samlRequestB64) : decodeSamlRequest(samlRequestB64);
 
 	const config = {
 		entityId: client.entityId ?? entityId,
@@ -56,22 +74,21 @@ async function handleSso(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "invalid_authn_request" }, { status: 400 }));
 	}
 
-	const sigAlgParam = url.searchParams.get("SigAlg");
-	const signatureParam = url.searchParams.get("Signature");
 	const requireSignature = Boolean(client.samlCertificate);
-	if (requireSignature && (!sigAlgParam || !signatureParam)) {
-		return withSecurityHeaders(Response.json({ error: "missing_authn_request_signature" }, { status: 400 }));
-	}
-	if (sigAlgParam && signatureParam) {
-		if (
-			!verifyAuthnRequestSignature(
+	if (requireSignature) {
+		let signatureValid = false;
+		if (isPostBinding) {
+			signatureValid = verifyAuthnRequestXmlSignature(decoded, client.samlCertificate ?? "");
+		} else if (sigAlgParam && signatureParam) {
+			signatureValid = verifyAuthnRequestSignature(
 				samlRequestB64,
 				relayState ?? null,
 				sigAlgParam,
 				signatureParam,
 				client.samlCertificate ?? "",
-			)
-		) {
+			);
+		}
+		if (!signatureValid) {
 			return withSecurityHeaders(Response.json({ error: "invalid_authn_request_signature" }, { status: 400 }));
 		}
 	}
