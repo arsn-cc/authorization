@@ -16,8 +16,8 @@ export const CACHE_TTL_ROLE = 3600; // 1 hour
 export const userByIdKey = (id: number) => `user:id:${id}`;
 export const userByUsernameKey = (username: string) => `user:username:${username}`;
 export const clientKey = (clientId: string) => `client:${clientId}`;
-export const oauthAccessTokenKey = (token: string) => `oauth:access:${token}`;
-export const oauthRefreshTokenKey = (token: string) => `oauth:refresh:${token}`;
+export const oauthAccessTokenKey = (token: string) => `oauth:access:${hashToken(token)}`;
+export const oauthRefreshTokenKey = (token: string) => `oauth:refresh:${hashToken(token)}`;
 export const oauthAuthCodeKey = (code: string) => `oauth:code:${code}`;
 export const roleKey = (id: number) => `role:${id}`;
 
@@ -211,7 +211,6 @@ export async function invalidateRole(id: number): Promise<void> {
 // ── OAuth token/code helpers ──────────────────────────────────────
 
 export interface CachedAccessToken {
-	token: string;
 	clientId: string;
 	userId: number | null;
 	sessionId: number | null;
@@ -223,7 +222,7 @@ export interface CachedAccessToken {
 export async function cacheOAuthAccessToken(record: typeof schema.oauthAccessToken.$inferSelect): Promise<void> {
 	const cache = await getCache();
 	const ttl = sessionTtlSeconds(record.expiresAt);
-	await cache.set(oauthAccessTokenKey(record.token), record, ttl);
+	await cache.set(oauthAccessTokenKey(record.tokenHash), record, ttl);
 }
 
 export async function getCachedOAuthAccessToken(token: string): Promise<CachedAccessToken | null> {
@@ -256,7 +255,7 @@ export async function deleteCachedOAuthAccessToken(token: string): Promise<void>
 export async function cacheOAuthRefreshToken(record: typeof schema.oauthRefreshToken.$inferSelect): Promise<void> {
 	const cache = await getCache();
 	const ttl = sessionTtlSeconds(record.expiresAt);
-	await cache.set(oauthRefreshTokenKey(record.token), record, ttl);
+	await cache.set(oauthRefreshTokenKey(record.tokenHash), record, ttl);
 }
 
 export async function getCachedOAuthRefreshToken(

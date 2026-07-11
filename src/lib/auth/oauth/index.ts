@@ -332,7 +332,6 @@ export async function generateAccessToken(
 	const [inserted] = await db
 		.insert(schema.oauthAccessToken)
 		.values({
-			token,
 			tokenHash: hashToken(token),
 			clientId: client.clientId,
 			userId: userId ?? null,
@@ -363,7 +362,6 @@ export async function generateRefreshToken(
 	const [inserted] = await db
 		.insert(schema.oauthRefreshToken)
 		.values({
-			token,
 			tokenHash: hashToken(token),
 			clientId,
 			userId,

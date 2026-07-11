@@ -6,7 +6,13 @@ export const EMAIL_TWO_FACTOR_TOKEN_TTL_MINUTES = 10;
 export const PENDING_AUTH_TTL_MINUTES = 5;
 
 export function sessionKey(token: string) {
-	return `session:${token}`;
+	return `session:${hashToken(token)}`;
+}
+
+// Cache key variant that takes an already-hashed token (used when deleting
+// sessions by userId, where only the token hash is available from the DB).
+export function sessionKeyFromHash(hash: string) {
+	return `session:${hash}`;
 }
 
 const SCRYPT_N = 16384;

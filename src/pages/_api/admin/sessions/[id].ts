@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { sessionKey } from "@/lib/auth/utils";
+import { sessionKeyFromHash } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -28,7 +28,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.sessionId, session.id)),
 		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.sessionId, session.id)),
 		db.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.sessionId, session.id)),
-		cache.delete(sessionKey(session.token)),
+		cache.delete(sessionKeyFromHash(session.tokenHash ?? "")),
 	]);
 
 	return withSecurityHeaders(new Response(null, { status: 204 }));

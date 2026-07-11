@@ -3,7 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { sessionKey } from "@/lib/auth/utils";
+import { sessionKeyFromHash, hashToken } from "@/lib/auth/utils";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -17,7 +17,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 	const sessionId = Number(params.id);
 
 	const [session] = await db
-		.select({ id: schema.session.id, token: schema.session.token })
+		.select({ id: schema.session.id, tokenHash: schema.session.tokenHash })
 		.from(schema.session)
 		.where(and(eq(schema.session.id, sessionId), eq(schema.session.userId, authed.userId)));
 
@@ -25,7 +25,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		return withSecurityHeaders(Response.json({ error: "not_found" }, { status: 404 }));
 	}
 
-	if (authed.sessionToken !== null && session.token === authed.sessionToken) {
+	if (authed.sessionToken !== null && session.tokenHash === hashToken(authed.sessionToken)) {
 		return withSecurityHeaders(Response.json({ error: "cannot_revoke_current_session" }, { status: 400 }));
 	}
 
@@ -34,7 +34,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.sessionId, session.id)),
 		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.sessionId, session.id)),
 		db.delete(schema.oauthAuthorizationCode).where(eq(schema.oauthAuthorizationCode.sessionId, session.id)),
-		cache.delete(sessionKey(session.token)),
+		cache.delete(sessionKeyFromHash(session.tokenHash ?? "")),
 	]);
 
 	return withSecurityHeaders(new Response(null, { status: 204 }));

@@ -3,7 +3,14 @@ import { and, eq, not } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { verifyPassword, hashPassword, isValidPassword, sessionKey, usernameToEmail } from "@/lib/auth/utils";
+import {
+	verifyPassword,
+	hashPassword,
+	isValidPassword,
+	sessionKeyFromHash,
+	hashToken,
+	usernameToEmail,
+} from "@/lib/auth/utils";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
 import { parseJsonSafe } from "@/lib/http/validate";
@@ -44,7 +51,7 @@ export async function POST(req: Request): Promise<Response> {
 
 	// Invalidate all sessions except the current one (if session-based)
 	const sessions = await db
-		.select({ token: schema.session.token, id: schema.session.id })
+		.select({ tokenHash: schema.session.tokenHash, id: schema.session.id })
 		.from(schema.session)
 		.where(eq(schema.session.userId, authed.userId));
 
@@ -52,7 +59,7 @@ export async function POST(req: Request): Promise<Response> {
 	const currentToken = authed.sessionToken;
 
 	const sessionDeleteCond = currentToken
-		? and(eq(schema.session.userId, authed.userId), not(eq(schema.session.token, currentToken)))
+		? and(eq(schema.session.userId, authed.userId), not(eq(schema.session.tokenHash, hashToken(currentToken))))
 		: eq(schema.session.userId, authed.userId);
 
 	await Promise.all([
@@ -61,7 +68,9 @@ export async function POST(req: Request): Promise<Response> {
 			.set({ passwordHash: hashPassword(newPassword), updatedAt: now })
 			.where(eq(schema.user.id, authed.userId)),
 		db.delete(schema.session).where(sessionDeleteCond),
-		...sessions.filter((s) => s.token !== currentToken).map((s) => cache.delete(sessionKey(s.token))),
+		...sessions
+			.filter((s) => !currentToken || s.tokenHash !== hashToken(currentToken))
+			.map((s) => cache.delete(sessionKeyFromHash(s.tokenHash ?? ""))),
 	]);
 
 	await invalidateUser({ id: authed.userId, username: authed.user.username });
@@ -70,7 +79,7 @@ export async function POST(req: Request): Promise<Response> {
 		username: authed.user.name ?? authed.user.username,
 	});
 
-	const terminatedCount = sessions.filter((s) => s.token !== currentToken).length;
+	const terminatedCount = sessions.filter((s) => !currentToken || s.tokenHash !== hashToken(currentToken)).length;
 
 	return withSecurityHeaders(
 		Response.json({

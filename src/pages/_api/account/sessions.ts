@@ -3,6 +3,7 @@ import { eq, and, gte, desc } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getAccountUser, unauthorized } from "@/lib/auth/account-auth";
+import { hashToken } from "@/lib/auth/utils";
 
 export async function GET(req: Request): Promise<Response> {
 	const authed = await getAccountUser(req);
@@ -25,7 +26,7 @@ export async function GET(req: Request): Promise<Response> {
 			createdAt: schema.session.createdAt,
 			expires: schema.session.expires,
 			usedAt: schema.session.usedAt,
-			isCurrent: schema.session.token,
+			isCurrent: schema.session.tokenHash,
 		})
 		.from(schema.session)
 		.where(and(eq(schema.session.userId, authed.userId), gte(schema.session.createdAt, thirtyDaysAgo)))
@@ -42,7 +43,7 @@ export async function GET(req: Request): Promise<Response> {
 		createdAt: s.createdAt,
 		expires: s.expires,
 		usedAt: s.usedAt,
-		isCurrent: authed.sessionToken !== null && s.isCurrent === authed.sessionToken,
+		isCurrent: authed.sessionToken !== null && s.isCurrent === hashToken(authed.sessionToken),
 	}));
 
 	return withSecurityHeaders(Response.json({ data: result }));

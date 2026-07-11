@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getCache } from "@/lib/cache";
-import { usernameToEmail, hashPassword, isValidUsername, isValidPassword, sessionKey } from "@/lib/auth/utils";
+import { usernameToEmail, hashPassword, isValidUsername, isValidPassword, sessionKeyFromHash } from "@/lib/auth/utils";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 import {
 	sendPasswordChangedEmail,
@@ -170,7 +170,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 	});
 
 	const sessions = await db
-		.select({ id: schema.session.id, token: schema.session.token })
+		.select({ id: schema.session.id, tokenHash: schema.session.tokenHash })
 		.from(schema.session)
 		.where(eq(schema.session.userId, userId));
 
@@ -187,7 +187,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 		db.delete(schema.accountUnlockToken).where(eq(schema.accountUnlockToken.userId, userId)),
 		db.delete(schema.emailTwoFactorToken).where(eq(schema.emailTwoFactorToken.userId, userId)),
 		db.delete(schema.user).where(eq(schema.user.id, userId)),
-		...sessions.map((s) => cache.delete(sessionKey(s.token))),
+		...sessions.map((s) => cache.delete(sessionKeyFromHash(s.tokenHash ?? ""))),
 	]);
 
 	return withSecurityHeaders(new Response(null, { status: 204 }));

@@ -27,6 +27,7 @@ import {
 	hashSecret,
 	hashToken,
 	sessionKey,
+	sessionKeyFromHash,
 	hashPassword,
 	verifyPassword,
 	generateToken,
@@ -296,7 +297,7 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 
 	const now = new Date();
 	const sessions = await db
-		.select({ token: schema.session.token })
+		.select({ tokenHash: schema.session.tokenHash })
 		.from(schema.session)
 		.where(eq(schema.session.userId, user.id));
 	const cache = await getCache();
@@ -308,7 +309,7 @@ export async function resetPasswordWithToken(input: ResetPasswordInput): Promise
 			.set({ passwordHash: hashPassword(input.password), updatedAt: now })
 			.where(eq(schema.user.id, user.id)),
 		db.delete(schema.session).where(eq(schema.session.userId, user.id)),
-		...sessions.map((session) => cache.delete(sessionKey(session.token))),
+		...sessions.map((session) => cache.delete(sessionKeyFromHash(session.tokenHash ?? ""))),
 	]);
 
 	// Invalidate cached user so stale data isn't served
@@ -406,7 +407,6 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 		.insert(schema.session)
 		.values({
 			userId: user.id,
-			token,
 			tokenHash: hashToken(token),
 			expires,
 			usedAt: now,
@@ -427,7 +427,7 @@ export async function loginUser(input: LoginInput): Promise<AuthResult<LoginResu
 
 	const result: LoginResult = {
 		user: toUserResult(user),
-		token: inserted.token,
+		token,
 		expires: inserted.expires,
 		sessionId: inserted.id,
 	};
@@ -604,7 +604,6 @@ async function createSessionFromPending(
 		.insert(schema.session)
 		.values({
 			userId,
-			token,
 			tokenHash: hashToken(token),
 			expires,
 			usedAt: new Date(),
@@ -617,7 +616,7 @@ async function createSessionFromPending(
 
 	const result: LoginResult = {
 		user,
-		token: inserted.token,
+		token,
 		expires: inserted.expires,
 		sessionId: inserted.id,
 	};
@@ -669,7 +668,7 @@ export async function getSession(token: string): Promise<AuthResult<Authenticate
 	const result: AuthenticatedSession = {
 		sessionId: row.session.id,
 		userId: row.session.userId,
-		token: row.session.token,
+		token,
 		expires: row.session.expires,
 		usedAt: row.session.usedAt,
 		user: toUserResult(row.user),
@@ -793,7 +792,7 @@ async function deleteUserAndCleanup(
 	const cache = await getCache();
 
 	const sessions = await db
-		.select({ token: schema.session.token })
+		.select({ tokenHash: schema.session.tokenHash })
 		.from(schema.session)
 		.where(eq(schema.session.userId, userId));
 
@@ -809,7 +808,7 @@ async function deleteUserAndCleanup(
 		await tx.delete(schema.user).where(eq(schema.user.id, userId));
 	});
 
-	await Promise.all(sessions.map((s) => cache.delete(sessionKey(s.token))));
+	await Promise.all(sessions.map((s) => cache.delete(sessionKeyFromHash(s.tokenHash ?? ""))));
 }
 
 export async function confirmAccountDeletion(token: string): Promise<AuthResult<true>> {

@@ -104,7 +104,6 @@ export async function POST(req: Request): Promise<Response> {
 		.insert(schema.personalAccessToken)
 		.values({
 			userId,
-			token,
 			tokenHash: hashToken(token),
 			name,
 			scopes,

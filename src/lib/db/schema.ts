@@ -56,7 +56,6 @@ const session = pgTable("session", {
 	userId: integer("user_id")
 		.notNull()
 		.references(() => user.id),
-	token: text("token").notNull().unique(),
 	tokenHash: text("token_hash"),
 	expires: timestamp("expires").notNull(),
 	usedAt: timestamp("used_at"),
@@ -182,8 +181,7 @@ const oauthAuthorizationCode = pgTable("oauth_authorization_code", {
 // `sessionId` links back to the web session that authorized the grant.
 const oauthAccessToken = pgTable("oauth_access_token", {
 	id: serial("id").primaryKey(),
-	token: text("token").notNull().unique(),
-	tokenHash: text("token_hash"),
+	tokenHash: text("token_hash").notNull().unique(),
 	clientId: text("client_id").notNull(),
 	userId: integer("user_id"),
 	sessionId: integer("session_id").references(() => session.id),
@@ -197,8 +195,7 @@ const oauthAccessToken = pgTable("oauth_access_token", {
 // `sessionId` links back to the web session that authorized the grant.
 const oauthRefreshToken = pgTable("oauth_refresh_token", {
 	id: serial("id").primaryKey(),
-	token: text("token").notNull().unique(),
-	tokenHash: text("token_hash"),
+	tokenHash: text("token_hash").notNull().unique(),
 	clientId: text("client_id").notNull(),
 	userId: integer("user_id").notNull(),
 	sessionId: integer("session_id").references(() => session.id),
@@ -217,8 +214,7 @@ const personalAccessToken = pgTable("personal_access_token", {
 	userId: integer("user_id")
 		.notNull()
 		.references(() => user.id),
-	token: text("token").notNull().unique(),
-	tokenHash: text("token_hash"),
+	tokenHash: text("token_hash").notNull().unique(),
 	name: text("name").notNull(),
 	scopes: text("scopes").notNull().default("admin:read"),
 	lastUsedAt: timestamp("last_used_at"),

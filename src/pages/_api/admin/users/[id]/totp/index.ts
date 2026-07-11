@@ -5,7 +5,7 @@ import { schema } from "@/lib/db/schema";
 import { requirePermission, AdminPermission } from "@/lib/auth/admin-auth";
 import { invalidateUser } from "@/lib/auth/cache";
 import { getCache } from "@/lib/cache";
-import { sessionKey } from "@/lib/auth/utils";
+import { sessionKeyFromHash } from "@/lib/auth/utils";
 
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
 	const result = await requirePermission(req, AdminPermission.UsersWrite);
@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
 	// Revoke all active sessions since TOTP reset is a security event
 	const sessions = await db
-		.select({ id: schema.session.id, token: schema.session.token })
+		.select({ id: schema.session.id, tokenHash: schema.session.tokenHash })
 		.from(schema.session)
 		.where(eq(schema.session.userId, userId));
 
@@ -41,7 +41,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 		db.delete(schema.session).where(eq(schema.session.userId, userId)),
 		db.delete(schema.oauthAccessToken).where(eq(schema.oauthAccessToken.userId, userId)),
 		db.delete(schema.oauthRefreshToken).where(eq(schema.oauthRefreshToken.userId, userId)),
-		...sessions.map((s) => cache.delete(sessionKey(s.token))),
+		...sessions.map((s) => cache.delete(sessionKeyFromHash(s.tokenHash ?? ""))),
 	]);
 
 	await invalidateUser({ id: user.id, username: user.username });
