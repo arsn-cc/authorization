@@ -128,7 +128,7 @@ export function generateAssertion(
 export function signXml(xml: string, privateKey?: string): string {
 	const key = privateKey ?? getPrivateKey();
 	if (!key) {
-		return xml;
+		throw new Error("SAML_PRIVATE_KEY is not configured; cannot sign assertion");
 	}
 
 	const cert = getCertificate();
@@ -158,7 +158,7 @@ export function signXml(xml: string, privateKey?: string): string {
 export function signResponse(xml: string, privateKey?: string): string {
 	const key = privateKey ?? getPrivateKey();
 	if (!key) {
-		return xml;
+		throw new Error("SAML_PRIVATE_KEY is not configured; cannot sign response");
 	}
 
 	const cert = getCertificate();
@@ -249,6 +249,11 @@ export function generateSamlResponse(
 	sessionIndex?: string,
 	requestId?: string,
 ): string {
+	const privateKey = getPrivateKey();
+	if (!privateKey) {
+		throw new Error("SAML_PRIVATE_KEY is not configured; cannot issue signed SAML responses");
+	}
+
 	const now = new Date();
 	const responseId = generateId();
 	const issuer = getIssuer(config.entityId);
@@ -256,10 +261,7 @@ export function generateSamlResponse(
 
 	let assertion = generateAssertion(config, user, sessionIndex);
 	if (assertionSigned) {
-		const privateKey = getPrivateKey();
-		if (privateKey) {
-			assertion = signXml(assertion, privateKey);
-		}
+		assertion = signXml(assertion, privateKey);
 	}
 
 	const inResponseTo = requestId ? `InResponseTo="${escapeXml(requestId)}"` : "";
@@ -280,10 +282,7 @@ export function generateSamlResponse(
 ${assertion}
 </saml2p:Response>`;
 
-	const privateKey = getPrivateKey();
-	if (privateKey) {
-		response = signResponse(response, privateKey);
-	}
+	response = signResponse(response, privateKey);
 
 	return response;
 }

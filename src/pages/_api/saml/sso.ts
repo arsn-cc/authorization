@@ -109,17 +109,22 @@ async function handleSso(req: Request): Promise<Response> {
 	}
 
 	const { user } = session.data;
-	const samlResponse = generateSamlResponse(
-		config,
-		{
-			id: user.id,
-			email: usernameToEmail(user.username),
-			...(user.name ? { name: user.name } : {}),
-			...(user.displayName ? { displayName: user.displayName } : {}),
-		},
-		usernameToEmail(user.username),
-		validationResult.requestId,
-	);
+	let samlResponse: string;
+	try {
+		samlResponse = generateSamlResponse(
+			config,
+			{
+				id: user.id,
+				email: usernameToEmail(user.username),
+				...(user.name ? { name: user.name } : {}),
+				...(user.displayName ? { displayName: user.displayName } : {}),
+			},
+			usernameToEmail(user.username),
+			validationResult.requestId,
+		);
+	} catch {
+		return withSecurityHeaders(Response.json({ error: "saml_signing_not_configured" }, { status: 500 }));
+	}
 
 	const samlResponseB64 = encodeSamlResponse(samlResponse);
 	const escapedAcsUrl = config.acsUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
