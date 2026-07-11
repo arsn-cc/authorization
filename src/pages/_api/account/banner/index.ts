@@ -9,6 +9,13 @@ import { validateImageHeader } from "@/lib/http/validate";
 import { withSecurityHeaders } from "@/lib/http/response";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+const EXT_BY_TYPE: Record<string, string> = {
+	"image/jpeg": "jpg",
+	"image/png": "png",
+	"image/webp": "webp",
+	"image/gif": "gif",
+	"image/avif": "avif",
+};
 const MAX_SIZE = 10 * 1024 * 1024;
 
 export async function POST(req: Request): Promise<Response> {
@@ -37,7 +44,10 @@ export async function POST(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "invalid_file" }, { status: 400 }));
 	}
 
-	const ext = file.name.split(".").pop() ?? "jpg";
+	const ext = EXT_BY_TYPE[file.type];
+	if (!ext) {
+		return withSecurityHeaders(Response.json({ error: "invalid_type" }, { status: 400 }));
+	}
 	const key = `banners/${authed.userId}/${randomUUID()}.${ext}`;
 
 	const storage = await getStorage();
