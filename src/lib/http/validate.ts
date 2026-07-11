@@ -108,3 +108,24 @@ export function validateImageHeader(bytes: Uint8Array, mime: string): boolean {
 
 	return false;
 }
+
+// A redirect URI is acceptable only over TLS, or over plaintext only when it
+// targets the local machine (development). Fragments are never allowed.
+export function isSecureRedirectUri(uri: string): boolean {
+	try {
+		const parsed = new URL(uri);
+		if (parsed.hash) {
+			return false;
+		}
+		if (parsed.protocol === "https:") {
+			return true;
+		}
+		if (parsed.protocol === "http:") {
+			const host = parsed.hostname.toLowerCase();
+			return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host.endsWith(".localhost");
+		}
+		return false;
+	} catch {
+		return false;
+	}
+}

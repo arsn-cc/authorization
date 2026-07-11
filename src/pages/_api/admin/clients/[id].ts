@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { parseJsonSafe } from "@/lib/http/validate";
+import { parseJsonSafe, isSecureRedirectUri } from "@/lib/http/validate";
 import { updateClientSchema } from "@/lib/schemas/admin";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
@@ -44,7 +44,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 	if (parsed.name !== undefined) {
 		updates.name = parsed.name;
 	}
-	if (parsed.redirectUris !== undefined) {
+	if (parsed.redirectUris) {
+		for (const uri of parsed.redirectUris.split(",")) {
+			if (uri.trim() && !isSecureRedirectUri(uri.trim())) {
+				return withSecurityHeaders(
+					Response.json(
+						{ error: "invalid_redirect_uri", error_description: "Redirect URI must use https (or http://localhost)" },
+						{ status: 400 },
+					),
+				);
+			}
+		}
 		updates.redirectUris = parsed.redirectUris;
 	}
 	if (parsed.grants !== undefined) {

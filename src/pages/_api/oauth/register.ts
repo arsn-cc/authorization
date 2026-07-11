@@ -1,5 +1,5 @@
 import { withSecurityHeaders } from "@/lib/http/response";
-import { parseJsonSafe } from "@/lib/http/validate";
+import { parseJsonSafe, isSecureRedirectUri } from "@/lib/http/validate";
 import { clientRegisterSchema } from "@/lib/schemas/oauth";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
@@ -25,21 +25,13 @@ export async function POST(req: Request): Promise<Response> {
 	const tokenEndpointAuthMethod = parsed.token_endpoint_auth_method;
 
 	for (const uri of redirectUris) {
-		try {
-			const parsed = new URL(uri);
-			if (parsed.hash) {
-				return withSecurityHeaders(
-					Response.json(
-						{ error: "invalid_redirect_uri", error_description: "Redirect URI must not contain a fragment" },
-						{ status: 400 },
-					),
-				);
-			}
-			if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-				return withSecurityHeaders(Response.json({ error: "invalid_redirect_uri" }, { status: 400 }));
-			}
-		} catch {
-			return withSecurityHeaders(Response.json({ error: "invalid_redirect_uri" }, { status: 400 }));
+		if (!isSecureRedirectUri(uri)) {
+			return withSecurityHeaders(
+				Response.json(
+					{ error: "invalid_redirect_uri", error_description: "Redirect URI must use https (or http://localhost)" },
+					{ status: 400 },
+				),
+			);
 		}
 	}
 
