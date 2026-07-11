@@ -15,7 +15,8 @@
 		"**/.vercel/",
 		"**/pages.gen.ts",
 		"**/node_modules/",
-		"**/drivers/_optional.d.ts"
+		"**/drivers/_optional.d.ts",
+		"**/.agents/"
 	],
 	"rules": {
 		"react/jsx-key": "warn",
