@@ -1,6 +1,7 @@
 import { withSecurityHeaders } from "@/lib/http/response";
 import { parseFormSafe } from "@/lib/http/validate";
 import { tokenRequestSchema } from "@/lib/schemas/oauth";
+import { rateLimit, getClientIp } from "@/lib/http/rate-limit";
 import {
 	exchangeAuthorizationCode,
 	exchangeClientCredentials,
@@ -19,6 +20,11 @@ function clientCredentials(req: Request): string | null {
 }
 
 export async function POST(req: Request): Promise<Response> {
+	const rl = await rateLimit(`oauth:token:${getClientIp(req)}`, 120, 60);
+	if (!rl.allowed) {
+		return withSecurityHeaders(new Response(null, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }));
+	}
+
 	const contentType = req.headers.get("content-type") ?? "";
 
 	if (contentType.includes("application/json")) {

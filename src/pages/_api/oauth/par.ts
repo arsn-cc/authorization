@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth/oauth";
 import { getSession } from "@/lib/auth";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+import { rateLimit, getClientIp } from "@/lib/http/rate-limit";
 
 function clientSecretFromBasicAuth(req: Request): string | undefined {
 	const auth = req.headers.get("authorization");
@@ -25,6 +26,11 @@ function clientSecretFromBasicAuth(req: Request): string | undefined {
 }
 
 export async function POST(req: Request): Promise<Response> {
+	const rl = await rateLimit(`oauth:par:${getClientIp(req)}`, 60, 60);
+	if (!rl.allowed) {
+		return withSecurityHeaders(new Response(null, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }));
+	}
+
 	const parsed = await parseFormSafe(req, parFormSchema);
 	if (parsed instanceof Response) {
 		return parsed;

@@ -6,8 +6,14 @@ import { count, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
 import { getClientById } from "@/lib/auth/oauth";
+import { rateLimit, getClientIp } from "@/lib/http/rate-limit";
 
 export async function POST(req: Request): Promise<Response> {
+	const rl = await rateLimit(`oauth:device:${getClientIp(req)}`, 10, 60);
+	if (!rl.allowed) {
+		return withSecurityHeaders(new Response(null, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }));
+	}
+
 	const parsed = await parseFormSafe(req, deviceFormSchema);
 	if (parsed instanceof Response) {
 		return parsed;
