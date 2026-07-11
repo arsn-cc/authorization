@@ -6,7 +6,18 @@ import { getClientById, generateAuthorizationCode, type AuthorizationRequest } f
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { schema } from "@/lib/db/schema";
+import { getCache } from "@/lib/cache";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+
+interface ParRequest {
+	clientId: string;
+	redirectUri: string;
+	scope: string;
+	state: string | null;
+	codeChallenge: string | null;
+	codeChallengeMethod: "S256" | "plain" | null;
+	nonce: string | null;
+}
 
 export async function GET(req: Request): Promise<Response> {
 	const url = new URL(req.url);
@@ -14,12 +25,13 @@ export async function GET(req: Request): Promise<Response> {
 
 	const responseType = query.response_type;
 	const clientId = query.client_id;
-	const redirectUri = query.redirect_uri;
-	const scope = query.scope ?? "openid";
-	const stateParam = query.state;
-	const codeChallengeParam = query.code_challenge;
-	const codeChallengeMethodParam = query.code_challenge_method as AuthorizationRequest["codeChallengeMethod"];
-	const nonceParam = query.nonce;
+	const requestUri = query.request_uri;
+	let redirectUri = query.redirect_uri;
+	let scope = query.scope ?? "openid";
+	let stateParam = query.state;
+	let codeChallengeParam = query.code_challenge;
+	let codeChallengeMethodParam = query.code_challenge_method as AuthorizationRequest["codeChallengeMethod"];
+	let nonceParam = query.nonce;
 
 	if (responseType !== "code") {
 		return withSecurityHeaders(
@@ -30,7 +42,54 @@ export async function GET(req: Request): Promise<Response> {
 		);
 	}
 
-	if (!clientId || !redirectUri) {
+	if (!clientId) {
+		return withSecurityHeaders(
+			Response.json({ error: "invalid_request" }, { status: 400, headers: { "content-type": "application/json" } }),
+		);
+	}
+
+	if (!requestUri && !redirectUri) {
+		return withSecurityHeaders(
+			Response.json({ error: "invalid_request" }, { status: 400, headers: { "content-type": "application/json" } }),
+		);
+	}
+
+	const client = await getClientById(clientId);
+	if (!client) {
+		return withSecurityHeaders(
+			Response.json({ error: "unauthorized_client" }, { status: 400, headers: { "content-type": "application/json" } }),
+		);
+	}
+
+	// Resolve a pushed authorization request (PAR), if used.
+	if (requestUri) {
+		const cache = await getCache();
+		const stored = await cache.get<ParRequest>(`par:${requestUri}`);
+		if (!stored || stored.clientId !== clientId) {
+			return withSecurityHeaders(
+				Response.json(
+					{ error: "invalid_request", error_description: "unknown or expired request_uri" },
+					{ status: 400 },
+				),
+			);
+		}
+		redirectUri = stored.redirectUri;
+		scope = stored.scope;
+		stateParam = stored.state ?? undefined;
+		codeChallengeParam = stored.codeChallenge ?? undefined;
+		codeChallengeMethodParam = stored.codeChallengeMethod ?? undefined;
+		nonceParam = stored.nonce ?? undefined;
+		await cache.delete(`par:${requestUri}`);
+	} else if (client.requirePushedAuthorizationRequests) {
+		return withSecurityHeaders(
+			Response.json(
+				{ error: "invalid_request", error_description: "pushed authorization request required" },
+				{ status: 400 },
+			),
+		);
+	}
+
+	if (!redirectUri) {
 		return withSecurityHeaders(
 			Response.json({ error: "invalid_request" }, { status: 400, headers: { "content-type": "application/json" } }),
 		);
@@ -45,14 +104,8 @@ export async function GET(req: Request): Promise<Response> {
 		);
 	}
 
-	const client = await getClientById(clientId);
-	if (!client) {
-		return withSecurityHeaders(
-			Response.json({ error: "unauthorized_client" }, { status: 400, headers: { "content-type": "application/json" } }),
-		);
-	}
-
 	if (
+		redirectUri &&
 		!client.redirectUris
 			?.split(",")
 			.map((u) => u.trim())

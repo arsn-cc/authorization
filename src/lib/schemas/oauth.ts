@@ -22,6 +22,7 @@ export const authorizeQuerySchema = z.object({
 	nonce: z.string().optional(),
 	prompt: z.string().optional(),
 	max_age: z.string().optional(),
+	request_uri: z.string().optional(),
 });
 
 export const parFormSchema = z.object({

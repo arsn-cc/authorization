@@ -146,6 +146,7 @@ export interface OAuthClient {
 	grants: string | null;
 	scopes: string;
 	requireConsent: boolean;
+	requirePushedAuthorizationRequests: boolean | null;
 	pkceRequired: boolean | null;
 	pkceChallengeMethod: string | null;
 	accessTokenTtl: number | null;

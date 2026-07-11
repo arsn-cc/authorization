@@ -98,6 +98,7 @@ export interface CachedOAuthClient {
 	grants: string | null;
 	scopes: string;
 	requireConsent: boolean;
+	requirePushedAuthorizationRequests: boolean | null;
 	pkceRequired: boolean | null;
 	pkceChallengeMethod: string | null;
 	accessTokenTtl: number | null;
@@ -126,6 +127,12 @@ export function toCachedClient(client: typeof schema.client.$inferSelect): Cache
 		grants: client.grants,
 		scopes: client.scopes,
 		requireConsent: Boolean(client.requireConsent),
+		requirePushedAuthorizationRequests:
+			client.requirePushedAuthorizationRequests === 1
+				? true
+				: client.requirePushedAuthorizationRequests === 0
+					? false
+					: null,
 		pkceRequired: client.pkceRequired === 1 ? true : client.pkceRequired === 0 ? false : null,
 		pkceChallengeMethod: client.pkceChallengeMethod,
 		accessTokenTtl: client.accessTokenTtl,

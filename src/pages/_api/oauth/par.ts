@@ -2,15 +2,25 @@ import { withSecurityHeaders } from "@/lib/http/response";
 import { parseFormSafe } from "@/lib/http/validate";
 import { parFormSchema } from "@/lib/schemas/oauth";
 import { randomBytes } from "node:crypto";
-import {
-	generateAuthorizationCode,
-	type AuthorizationRequest,
-	authenticateClient,
-	validateRedirectUri,
-} from "@/lib/auth/oauth";
+import { authenticateClient, validateRedirectUri } from "@/lib/auth/oauth";
 import { getSession } from "@/lib/auth";
 import { parseCookie, SESSION_COOKIE_NAME } from "@/lib/auth/utils";
+import { getCache } from "@/lib/cache";
 import { rateLimit, getClientIp } from "@/lib/http/rate-limit";
+
+export const PAR_TTL_SECONDS = 600;
+
+interface StoredParRequest {
+	clientId: string;
+	redirectUri: string;
+	scope: string;
+	state: string | null;
+	codeChallenge: string | null;
+	codeChallengeMethod: "S256" | "plain" | null;
+	nonce: string | null;
+	userId: number;
+	sessionId: number | undefined;
+}
 
 function clientSecretFromBasicAuth(req: Request): string | undefined {
 	const auth = req.headers.get("authorization");
@@ -75,25 +85,28 @@ export async function POST(req: Request): Promise<Response> {
 		return withSecurityHeaders(Response.json({ error: "login_required" }, { status: 401 }));
 	}
 
-	const authRequest: AuthorizationRequest = {
-		responseType: "code",
+	// Store the validated authorization request under a single-use request URI.
+	const requestUri = `urn:ietf:params:oauth:request_uri:${randomBytes(16).toString("hex")}`;
+	const stored: StoredParRequest = {
 		clientId,
 		redirectUri,
 		scope,
-		...(stateParam ? { state: stateParam } : {}),
-		...(codeChallengeParam ? { codeChallenge: codeChallengeParam } : {}),
-		...(codeChallengeMethodParam === "S256" || codeChallengeMethodParam === "plain"
-			? { codeChallengeMethod: codeChallengeMethodParam }
-			: {}),
-		...(nonceParam ? { nonce: nonceParam } : {}),
+		state: stateParam,
+		codeChallenge: codeChallengeParam,
+		codeChallengeMethod:
+			codeChallengeMethodParam === "S256" || codeChallengeMethodParam === "plain" ? codeChallengeMethodParam : null,
+		nonce: nonceParam,
+		userId,
+		sessionId,
 	};
 
-	await generateAuthorizationCode(authRequest, userId, sessionId);
+	const cache = await getCache();
+	await cache.set(`par:${requestUri}`, stored, PAR_TTL_SECONDS);
 
 	return withSecurityHeaders(
 		Response.json({
-			request_uri: `urn:ietf:params:oauth:request_uri:${randomBytes(16).toString("hex")}`,
-			expires_in: 600,
+			request_uri: requestUri,
+			expires_in: PAR_TTL_SECONDS,
 		}),
 	);
 }
